@@ -1,0 +1,121 @@
+################################################################################
+# PET source data params						       #
+################################################################################
+
+# Location of the original PET data file (absolute path)
+petdir=/data/nil-bluearc/mintun-DIAN/RAW/pet_data/0001406/0001406_v00_pib/SCANS/3/DICOM
+
+# PET data file name
+petfn="*.dcm"
+
+# petid is used as the target name of the 4dfp file and the root for various file
+# names
+petid=1406pib1
+
+# tracer half life (in seconds)
+half_life=1223
+
+# whether the original data is DICOM (0), ECAT (1), or Siemens InterFile format (2) 
+format=0
+
+# filtering parameters
+filterxy=5.0
+filterz=5.0
+
+# delay of scan versus injection (in minutes)
+delay=0
+
+################################################################################
+# PET motion correction params						       #
+################################################################################
+
+#time bin length (in seconds)	 	                       
+tbl=300
+
+# Tolerance for motion correction
+tolmoco=200
+
+
+################################################################################
+# FREESURFER parameters							       #
+################################################################################
+
+# FreeSurfer flag
+FS=1
+
+# Location of the FreeSurfer generated mgz files. 
+fsdir=/data/nil-bluearc/benzinger2/suy/FS_MCBP/test/pib_proc
+
+
+# The name of the MR data file in FreeSurfer space (T1.mgz is used)
+t1=T1.mgz
+
+# The FreeSurfer segmentation output file (wmparc.mgz is used)
+wmparc=wmparc.mgz
+
+# Absolute path for the FreeSurferColorLUT.txt file. It has to match the version
+# used to do the FreeSurfer processing
+fslut=/data/nil-bluearc/mintun/SuY/FreeSurferColorLUT.txt
+
+################################################################################
+# PET to target registration parameters					       #
+################################################################################
+refimg=T1001
+tolreg=200
+rmf=-rm
+mmf=-mm
+rbf="-rb 8"
+mbf="-mb 6"
+modf=""
+
+
+################################################################################
+# ROI parameters							       #
+################################################################################
+roiimg=RSFMask
+rsflist=RSFlist.txt
+roilist=RSFlist.txt
+
+
+################################################################################
+# PVC flags								       #
+################################################################################
+
+pvc2cflag=1
+rsfflag=1
+# Full-width-half-max (fwhm) of the assumed PET scanner point spread function
+# to be used for partial volume correction
+fwhm=6.0
+
+
+################################################################################
+# Modeling parameters							       #
+################################################################################
+
+# Model Starting Time in Minutes from time of injection and scan for dynamic scans
+mst=40
+
+# Model Duration in Minutes  for dynamic scans
+mdt=30
+
+# Model
+model=logan
+
+# SUVR flag
+suvr=1
+
+# Eflux rate constant for Logan Analysis
+k2=0.16
+
+# Reference ROI label string
+refroistr=Cerebellum-Cortex
+
+################################################################################
+# Reporting parameters							       #
+################################################################################
+
+# Absolute path for the file with list of regions to be analyzed
+# Currently it is specific to FreeSurfer Based processing
+
+roisfn=/data/nil-bluearc/benzinger2/suy/ROIs
+
