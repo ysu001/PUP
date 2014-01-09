@@ -1,0 +1,51 @@
+#!/bin/bash
+################################################################################
+# roi SUVR calculation							       #
+#                                   				               #
+# USAGE:								       #
+#	suvrROI reftac roitac roiname sf ef opt	                               #
+#                                                                              #
+#	petid:	petid is a string associated with the file name PET data in    #
+#               4dfp format.						       #
+#	reftac:	the reference region TAC		                       #
+#	roitac:	roi tac							       #
+#	roiname:							       #
+#	sf:	model starting frame					       #
+#	ef:	model ending frame					       #
+#	opt:	output file name					       #
+#									       #
+#									       #
+################################################################################
+# Yi Su, 01/07/2014
+
+idstr='$Id: suvrROI,v 1.0 2014/01/07 18:07:48 suy Exp $'
+
+echo $idstr
+
+program=`basename $0`
+
+if [ $# -lt 6 ]
+then
+	echo "Usage: $program reftac roitac roiname sf ef opt"
+	exit -1
+fi
+
+reftac=$1
+roitac=$2
+roiname=$3
+sf=$4
+ef=$5
+opt=$6
+
+###############################################################################
+
+echo "@-> $program $reftac $roitac $roiname $sf $ef $opt" > $opt
+printf "%-35s %11s %11s\n" Structure_Name NVox SUVR >> $opt
+
+ref=`gawk 'NR==2 {print $4}' $reftac`
+roi=`gawk 'NR==2 {print $4}' $roitac`
+nvox=`gawk 'NR==1 {print $6}' $roitac`
+suvr=$(echo "scale=6; $roi/$ref" | bc )
+
+
+printf "%-35s %11d %11.4f\n" $roiname $nvox $suvr >> $opt

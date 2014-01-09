@@ -1,0 +1,53 @@
+#!/bin/bash
+################################################################################
+# PET reference TAC extraction. 					       #
+#                                                                              #
+# USAGE:								       #
+#	petrefroi paramsfn                                        	       #
+#                                                                              #
+################################################################################
+# Yi Su, 01/08/2014
+
+idstr='$Id: petrefroi,v 1.0 2014/01/08 18:07:48 suy Exp $'
+
+echo $idstr
+
+program=`basename $0`
+
+if [ $# -lt 1 ]
+then
+	echo "Usage: $program paramsfn"
+	exit -1
+fi
+
+paramsfn=$1
+###############################################################################
+# Read PARAMS file
+source $paramsfn
+
+# Further development will improve this program which checks the validity of
+# the inputs specified in the params file
+
+###############################################################################
+if (( $FS == 1 ))
+then
+	fsrefroi $petid $roilist $refroistr .tac
+	if (( $rsfflag == 1 ))
+	then
+		fsrefroi $petid $roilist $refroistr _RSF.tac
+	fi
+	if (( $pvc2cflag == 1 ))
+	then
+		fsrefroi $petid $roilist $refroistr _PVC2C.tac
+	fi
+	
+fi
+
+###############################################################################
+# Additional ROI target based processing will be included in the future
+
+
+
+###############################################################################
+
+exit $?

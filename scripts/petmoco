@@ -1,0 +1,118 @@
+#!/bin/bash
+################################################################################
+# PET motion correction. This program first generate a series of time binned   #
+# PET data based on the user defined time bin size. Then it registers each     #
+# time bin to a common reference (the sumall image).			       #
+#                                                                              #
+# USAGE:								       #
+#	petmoco paramsfn                                                       #
+#                                                                              #
+# This script reads a params file that includes:                               #
+# 	tbl:	time bin length (in seconds)	 	                       #
+#	petid:	petid is a string associated with the file name PET data in    #
+#               4dfp format.						       #
+#	tolmoco:tolerance of the motion correction registration error, for a   #
+# 		particular frame, if the registration error is greater than    #
+#		the tolerance, then the corresponding t4 will be set to zero   #
+#		and print out a WARNING.				       #
+#	radionuclide: F18, C11, O15 etc.				       #
+#       half_life: half life of the radionuclide in seconds.                   #
+#                                                                              #
+# The output of this program would be a text file that contains the t4 file    #
+# for each frame to a reference (usually the summed image), and the individual #
+# t4 files for each time bin.						       #
+################################################################################
+# Yi Su, 11/05/2013
+
+idstr='$Id: petmoco,v 1.0 2013/11/05 18:07:48 suy Exp $'
+
+echo $idstr
+
+program=`basename $0`
+
+if [ $# -lt 1 ]
+then
+	echo "Usage: $program paramsfn"
+	exit -1
+fi
+
+paramsfn=$1
+###############################################################################
+# Read PARAMS file
+source $paramsfn
+
+# Further development will improve this program which checks the validity of
+# the inputs specified in the params file
+
+###############################################################################
+# Generate time bin range
+pettb.pl -infile ${petid}.info -constant $tbl -output ${petid}.tb -output2 ${petid}_f2tb.lst
+
+###############################################################################
+# Create time bin 4dfps
+ntb=`wc -l ${petid}.tb | gawk '{print $1}'`
+for (( i=1; i<=ntb; i++ ))
+do
+	sf=`gawk 'NR=='$i' {print $1}' ${petid}.tb`
+	ef=`gawk 'NR=='$i' {print $2}' ${petid}.tb`
+	sum_pet_4dfp ${petid} $sf $ef -d -h${half_life} ${petid}_tb${i}
+done
+
+###############################################################################
+# Create sumall 4dfp
+nf=`wc -l ${petid}.info | gawk '{print $1}'`
+sum_pet_4dfp ${petid} 1 $nf -d -h${half_life} ${petid}_sumall
+
+###############################################################################
+# Initialize FOV coverage
+tv=`imgmax_4dfp -m ${petid}"_sumall" | gawk ' {print $2-1.0}'`
+maskimg_4dfp -v1 -t${tv} ${petid}"_sumall" ${petid}"_sumall" temp$$
+nsl=`gawk '/matrix size \[3\]/ {print $NF}' ${petid}"_sumall.4dfp.ifh"`
+zero_slice_4dfp temp$$ z 1 3  temp$$"_mskz"
+tv=`imgmax_4dfp -m ${mrroot} | gawk ' {print $2-1.0}'`
+k=$((nsl-2))
+zero_slice_4dfp temp$$"_mskz" z $k $nsl  temp$$"_msk"
+cp temp$$"_msk".4dfp.img petfov.4dfp.img
+cp temp$$"_msk".4dfp.ifh petfov.4dfp.ifh
+cp temp$$"_msk".4dfp.hdr petfov.4dfp.hdr
+cp temp$$"_msk".4dfp.img.rec petfov.4dfp.img.rec
+
+###############################################################################
+# Register each time bin to the sumall and generate combined FOV coverage
+for (( i=1; i<=ntb; i++ ))
+do
+	reg2img ${petid}_sumall ${petid}_tb${i} -rm -mm -rb 6 -mb 6 -f
+	t4fn=${petid}_tb${i}_to_${petid}_sumall_t4
+	err=`gawk '/ERROR =/{print $3}' ${petid}_sumall_${petid}_tb${i}_reg2img_resolve.log`
+	if (( $err > $tolmoco ))
+	then
+		echo "WARNING: MOCO Failure for Time Bin $i"
+		echo "Setting the t4 to identity matrix"
+		cp ${RELEASE}/T_t4 ${t4fn}
+	fi
+	echo ${t4fn} >> ${petid}.moco
+	t4img_4dfp ${t4fn} temp$$"_msk" temp$$"_1" -O${petid}_sumall
+	imgopr_4dfp -ptemp$$"_2" temp$$"_1" petfov
+	maskimg_4dfp -R -v1 -t.99 temp$$"_2" temp$$"_2" petfov
+done
+rm temp*
+
+###############################################################################
+# Create frame motion correction t4 lookup file, updated sumall image, and 
+# motion corrected dynamic PET data
+for (( i=1; i<=nf; i++ ))
+do
+	tb=`gawk 'NR=='$i' {print $1}' ${petid}_f2tb.lst`
+	t4fn=`gawk 'NR=='$tb' {print $1}' ${petid}.moco`
+	chop_4dfp ${petid} $i $i -o${petid}_f${i}
+	t4img_4dfp $t4fn ${petid}_f${i} ${petid}_f${i}_moco -O${petid}_sumall
+	echo $t4fn >> ${petid}_mocot4.lst
+	echo ${petid}_f${i}_moco >> ${petid}_moco.lst
+done
+paste_4dfp -a ${petid}_moco.lst ${petid}_moco
+rm ${petid}_moco.lst
+rm ${petid}_f*.4dfp.*
+cp ${petid}.4dfp.img.rec ${petid}_moco.4dfp.img.rec
+sum_pet_4dfp ${petid}_moco 1 $nf -d -h${half_life} ${petid}_sumall
+
+echo "mocofn=${petid}_mocot4.lst" >> $paramsfn

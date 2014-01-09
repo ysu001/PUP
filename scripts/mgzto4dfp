@@ -1,0 +1,17 @@
+#!/bin/bash
+idstr='$Id: mgzto4dfp,v 1.2 2012/08/21 21:11:02 suy Exp $'
+echo $idstr
+
+
+if [ $# -lt 1 ]
+then
+	echo "Usage:	"`basename $0`" mgzfile"
+	exit 1
+fi
+
+mgzfn=$1
+mgzbase=`basename $mgzfn`
+mgzroot=${mgzbase%.*}
+$FREESURFER_HOME/bin/mri_convert ${mgzroot}.mgz ${mgzroot}.nii
+nifti_4dfp -4 -N ${mgzroot} ${mgzroot}001
+

@@ -1,0 +1,141 @@
+#!/bin/bash
+################################################################################
+# PET processing							       #
+#                                                                              #
+# USAGE:								       #
+#	petproc paramsfn                                                       #
+#                                                                              #
+# This script reads a params file for PET processing                           #
+################################################################################
+# Yi Su, 01/08/2014
+
+idstr='$Id: petproc,v 1.1 2014/01/09 18:48:38 suy Exp $'
+
+echo $idstr
+
+program=`basename $0`
+
+if [ $# -lt 1 ]
+then
+	echo "Usage: $program paramsfn"
+	exit -1
+fi
+
+paramsfn=$1
+
+###############################################################################
+# Read PARAMS file
+source $paramsfn
+
+# Further development will improve this program to check the validity of
+# the inputs specified in the params file
+
+mkdir pet_proc
+cp $paramsfn pet_proc
+cd pet_proc
+
+###############################################################################
+# PET file conversion
+petpreproc $paramsfn
+if [ "$?" -ne "0" ]
+then
+	echo "PET file conversion ERROR!"
+	exit -1
+fi
+
+###############################################################################
+# PET motion correction
+petmoco $paramsfn
+if [ "$?" -ne "0" ]
+then
+	echo "PET motion correction ERROR!"
+	exit -1
+fi
+
+###############################################################################
+# ROI target preprocessing
+targpreproc $paramsfn
+if [ "$?" -ne "0" ]
+then
+	echo "ROI target preprocessing ERROR!"
+	exit -1
+fi
+
+###############################################################################
+# PET to target space registration
+petreg $paramsfn
+if [ "$?" -ne "0" ]
+then
+	echo "PET to target registration ERROR!"
+	exit -1
+fi
+
+###############################################################################
+#				Start Modeling				      #
+###############################################################################
+
+###############################################################################
+# Determine model frames
+petmdlframes $paramsfn
+if [ "$?" -ne "0" ]
+then
+	echo "Model Frames ERROR!"
+	exit -1
+fi
+
+
+###############################################################################
+# Full Kinetic Processing
+
+# ROI TAC extraction
+petroitac $paramsfn
+if [ "$?" -ne "0" ]
+then
+	echo "ROI TAC extraction ERROR!"
+	exit -1
+fi
+
+# Logan Reference Region Analysis
+if [ "$model" = "logan" ]
+then
+	petrefroi $paramsfn
+	refstat=$?
+	if [ "$refstat" -eq "0" ]
+	then
+		petroiloganREF $paramsfn
+		loganstat=$?
+		if [ "$loganstat" -eq "0" ]
+		then
+			petloganrep $paramsfn
+		else
+			echo "Logan Reference Region Analysis Failure!"
+		fi
+	else
+		echo " REF TAC extraction ERROR!"		
+	fi
+fi
+
+# Additional analysis will be implemented in the future
+
+###############################################################################
+# Static Processing
+
+if [ "$suvr" -eq "1" ]
+then
+	petmdlsum $paramsfn
+	petroiint $paramsfn
+	if [ "$?" -eq "0" ]
+	then
+		petrefroi $paramfn
+		petsuvr $paramsfn	
+		if [ "$?" -eq "0" ]
+		then
+			petsuvrrep $paramsfn
+		else
+			echo "SUVR Analysis Failure!"
+		fi
+	else
+		echo " REF TAC extraction ERROR!"		
+	fi
+fi
+

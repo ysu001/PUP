@@ -1,0 +1,74 @@
+#!/bin/bash
+################################################################################
+# PET to target registration. This program register summed PET image to a user #
+# supplied reference image for further analysis. The reference could be an MRI #
+# image or an atlas template image.					       #
+#                                                                              #
+# USAGE:								       #
+#	petreg paramsfn                                                        #
+#                                                                              #
+# This script reads a params file that includes:                               #
+#	petid:	petid is a string associated with the file name PET data in    #
+#               4dfp format.						       #
+#	tolreg: tolerance of the pet to target registration error. If the      #
+#		registration error is greater than the tolerance, a WARNING    #
+#		will be printed.					       #
+#	refimg: refimg is a string associated with the file name of the        #
+#		reference image in 4dfp format.				       #
+#	rmf:	reference image masking flag				       #
+#	mmf:	moving image masking flag				       #
+#	rbf:	reference image blurring flag				       #
+#	mbf:	moving image blurring flat				       #
+#	modf:   registration model flag (cross or intra model)		       #
+#                                                                              #
+# The output of this program is the t4 files for the registration	       #
+################################################################################
+# Yi Su, 11/05/2013
+
+idstr='$Id: petreg,v 1.0 2013/11/05 18:07:48 suy Exp $'
+
+echo $idstr
+
+program=`basename $0`
+
+if [ $# -lt 1 ]
+then
+	echo "Usage: $program paramsfn"
+	exit -1
+fi
+
+paramsfn=$1
+###############################################################################
+# Read PARAMS file
+source $paramsfn
+
+# Further development will improve this program which checks the validity of
+# the inputs specified in the params file
+
+###############################################################################
+# Generate time bin range
+
+reg2img $refimg ${petid}_sumall $rmf $mmf $rbf $mbf $modf
+
+regerr=`gawk '/ERROR =/{print $3}' ${refimg}_${petid}_sumall_reg2img_resolve.log`
+
+if (( $regerr > $tolreg ))
+then
+	echo "ERROR: REG Failure. Abort!"
+	exit 3
+fi
+
+cp ${petid}_sumall_to_${refimg}_t4 ${petid}_to_${refimg}_t4
+
+###############################################################################
+# Generating PET field of view converage in roi space PETFOV.4dfp.img
+
+t4img_4dfp ${petid}_sumall_to_${refimg}_t4 petfov temp$$ -O$refimg
+maskimg_4dfp -R -v1 -t.99 temp$$ temp$$ PETFOV
+rm temp$$.4dfp.*
+
+echo "pet2roit4=${petid}_sumall_to_${refimg}_t4" >> $paramsfn
+
+exit 0
+
+

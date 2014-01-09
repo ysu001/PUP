@@ -1,0 +1,56 @@
+#!/bin/bash
+################################################################################
+# Get summed PET intensity image from motion corrected data and generate a info#
+# file that matches the start time and duration of the summed data for further #
+# processing.								       #
+#                                   				               #
+# USAGE:								       #
+#	petmdlsum paramsfn                                                     #
+#                                                                              #
+# This script reads a params file that includes:                               #
+#	petid:	petid is a string associated with the file name PET data in    #
+#               4dfp format, it should be a single frame image.		       #
+#	sf:	model starting frame					       #
+#	ef:	model ending frame					       #
+#	radionuclide: F18, C11, O15 etc.				       #
+#       half_life: half life of the radionuclide in seconds.                   #
+#									       #
+#									       #
+################################################################################
+# Yi Su, 01/07/2014
+
+idstr='$Id: petmdlsum,v 1.0 2014/01/07 18:07:48 suy Exp $'
+
+echo $idstr
+
+program=`basename $0`
+
+if [ $# -lt 1 ]
+then
+	echo "Usage: $program paramsfn"
+	exit -1
+fi
+
+paramsfn=$1
+###############################################################################
+# Read PARAMS file
+source $paramsfn
+
+# Further development will improve this program which checks the validity of
+# the inputs specified in the params file
+
+# Sum PET frames
+sum_pet_4dfp ${petid}_moco $sf $ef -d -h${half_life} ${petid}_msum
+
+# Processing info file
+st=`gawk 'NR=='$sf' {print $1}' ${petid}.info`
+fd=0
+for (( i=$sf; i<=$ef; i++ ))
+do
+	fdf=`gawk 'NR=='$i' {print $3}' ${petid}.info`
+	fd=$(echo "scale=6; $fd+$fdf" | bc)
+done
+t=$(echo "scale=6; $st+$fd/2" | bc)
+printf '%f\t%f\t%f\t%f\t%d\n' $st $t $fd 1 1 > ${petid}"_msum.info"
+
+echo "petid=${petid}_msum" >> $paramsfn

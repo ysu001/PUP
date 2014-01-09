@@ -1,0 +1,70 @@
+#!/bin/bash
+################################################################################
+# PET roi SUVR calculation						       #
+#                                   				               #
+# USAGE:								       #
+#	petsuvr paramsfn	                                               #
+#                                                                              #
+# This script reads a params file that includes:                               #
+#	petid:	petid is a string associated with the file name PET data in    #
+#               4dfp format.						       #
+#	roilist:the text file that lists ROI names                             #
+#	rsfflag: whether RSF PVC is performed				       #
+#	pvc2cflag: whether PVC2C is performed				       #
+#	sf:	model starting frame					       #
+#	ef:	model ending frame					       #
+#									       #
+#									       #
+# The output of this program is SUVR for each ROI and SUVR images in target    #
+# space									       #
+################################################################################
+# Yi Su, 01/07/2014
+
+idstr='$Id: petsuvr,v 1.0 2014/01/07 18:07:48 suy Exp $'
+
+echo $idstr
+
+program=`basename $0`
+
+if [ $# -lt 1 ]
+then
+	echo "Usage: $program paramsfn"
+	exit -1
+fi
+
+paramsfn=$1
+###############################################################################
+# Read PARAMS file
+source $paramsfn
+
+# Further development will improve this program which checks the validity of
+# the inputs specified in the params file
+
+###############################################################################
+
+NROI=`wc -l $roilist | gawk '{print $1}'`
+for (( i=1; i<=$NROI; i++ ))
+do
+	label=`gawk 'NR=='$i' {print $1}' $roilist`
+	suvrROI ${petid}_REF.tac ${petid}_${label}.tac $label $sf $ef ${petid}_${label}.suvr
+	
+	if (( $rsfflag == 1 ))
+	then
+		suvrROI ${petid}_REF_RSF.tac ${petid}_${label}_RSF.tac $label $sf $ef ${petid}_${label}_RSF.suvr
+	fi
+	if (( $pvc2cflag == 1 ))
+	then
+		suvrROI ${petid}_REF_PVC2C.tac ${petid}_${label}_PVC2C.tac $label $sf $ef ${petid}_${label}_PVC2C.suvr
+	fi
+done
+
+ref=`gawk 'NR==2 {print $4}' ${petid}_REF.tac`
+scf=$(echo "scale=8; 1/$ref" | bc)
+ext=( img img.rec ifh hdr )
+for (( i=0; i<4; i++ ))
+do
+	cp ${petid}.4dfp.${ext[$i]} ${petid}_SUVR.4dfp.${ext[$i]}
+done
+scale_4dfp ${petid}_SUVR $scf
+gauss_4dfp ${petid}_SUVR 0.8
+

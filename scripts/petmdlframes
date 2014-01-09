@@ -1,0 +1,74 @@
+#!/bin/bash
+################################################################################
+# Generate start and end frame for modeling			 	       #
+#                                   				               #
+# USAGE:								       #
+#	petmdlframes paramsfn					               #
+# This script reads a params file that includes:                               #
+##	petid:	petid is a string associated with the file name PET data in    #
+#               4dfp format.						       #
+#	mst:	pet modeling start time	(in minutes)			       #
+#	mdt:	pet model duration (in minutes)				       #
+#									       #
+# The output of this program is a text file that contains the model start and  #
+# end frame index							       #
+################################################################################
+# Yi Su, 01/03/2014
+
+idstr='$Id: petmdlframes,v 1.0 2014/01/03 18:07:48 suy Exp $'
+
+echo $idstr
+
+program=`basename $0`
+
+if [ $# -lt 1 ]
+then
+	echo "Usage: $program paramsfn"
+	exit -1
+fi
+
+paramsfn=$1
+###############################################################################
+# Read PARAMS file
+source $paramsfn
+
+# Further development will improve this program which checks the validity of
+# the inputs specified in the params file
+
+
+###############################################################################
+nf=`wc -l ${petid}.info | gawk '{print $1}'`
+(( diff1=7200*7200 ))
+diff2=$diff1
+sf=1
+ef=$nf
+
+for (( i=1; i<=nf; i++ ))
+do
+	ts=`gawk 'NR=='$i' {print $1}' ${petid}.info`
+	frd=`gawk 'NR=='$i' {print $3}' ${petid}.info`
+	te=$(echo "scale=6; $ts+$frd" |bc)
+	d=$(echo "scale=6; ($ts-$mst*60)^2" | bc -l)
+	r=`echo $d '<' $diff1 | bc -l`
+	if (( $r == 1 ))
+	then
+		sf=$i
+		diff1=$d
+	fi
+	d=$(echo "scale=6; ($te-($mst+$mdt)*60)^2" | bc -l)
+	r=`echo $d '<' $diff2 | bc -l`
+	if (( $r == 1 ))
+	then
+		ef=$i
+		diff2=$d
+	fi
+done
+
+if (( $ef < $sf ))
+then
+	ef=$sf
+fi
+echo "sf=$sf" >> $paramsfn
+echo "ef=$ef" >> $paramsfn
+
+exit 0

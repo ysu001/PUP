@@ -1,0 +1,102 @@
+#!/bin/bash
+################################################################################
+# PET file preprocessing to generate 4dfp format PET data for further analysis #
+# using PET processing pipelines.                                              #
+#                                                                              #
+# USAGE:								       #
+#	petpreproc paramsfn                                                    #
+#                                                                              #
+# This script reads a params file that includes:                               #
+# 	petdir:	absolute path of the pet data location	 	               #
+#	petfn:	file name of the pet data				       #
+#		for DICOM data, petfn = "*.dcm" or "*.ima"                     #
+#		for ecat data, petfn = ???.v                                   #
+#               for Siemens InterFile Format data, petfn = ???.mhdr            #
+#	format: original format of pet data                                    #
+#		format = 0 (DICOM) 					       #
+#		format = 1 (ecat)					       #
+#		format = 2 (Siemens InterFile)				       #
+#	filterxy: fwhm of in-plane filtering				       #
+#	filterz:  fwhm of axial filtering				       #
+#                                                                              #
+# The output of this program would be a 4dfp quadruplet and a .info file that  #
+# contains the frame timing and decay correction info.                         #
+################################################################################
+# Yi Su, 11/05/2013
+
+idstr='$Id: petpreproc,v 1.0 2013/11/05 18:07:48 suy Exp $'
+
+echo $idstr
+
+program=`basename $0`
+
+if [ $# -lt 1 ]
+then
+	echo "Usage: $program paramsfn"
+	exit -1
+fi
+
+paramsfn=$1
+
+# Read PARAMS file
+source $paramsfn
+
+# Further development will improve this program which checks the validity of
+# the inputs specified in the params file
+
+# File conversion
+if (( $format == 0 ))
+then
+	dcm_pet -m -a  -b $petid $petdir/$petfn
+elif (( $format == 1 ))
+then
+	ecatto4dfp $petdir/$petfn $petid
+elif (( $format == 2 ))
+then
+	sif_4dfp $petdir/$petfn $petid
+fi
+
+# Generate .info file
+PETinfo $petid $format $delay
+
+# Filtering if requested
+if [ -n "$filterxy" ] && [ -n "$filterz" ]
+then
+	echo $?
+	if [ "$filterxy" != "$filterz" ]
+	then
+		tmp=$(echo "scale=6; $filterxy*10+.499999" | bc)
+		filterxyname=${tmp%.*}
+		tmp=$(echo "scale=6; $filterz*10+.499999" | bc)
+		filterzname=${tmp%.*}
+		imgblur_4dfp -xy $petid $filterxy
+		imgblur_4dfp -z ${petid}_bxy$filterxyname $filterz
+
+		ext=( img img.rec ifh hdr )
+		for (( i=0; i<4; i++ ))
+		do
+			cp ${petid}_bxy${filterxyname}_bz${filterzname}.4dfp.${ext[$i]} ${petid}n.4dfp.${ext[$i]}
+		done
+		rm ${petid}_bxy$filterxyname.4dfp.*
+		rm ${petid}_bxy${filterxyname}_bz${filterzname}.4dfp.*
+	else
+		tmp=$(echo "scale=6; $filterxy*10+.499999" | bc)
+		filtername= ${tmp%.*}
+		imgblur_4dfp ${petid} $filterxy
+		ext=( img img.rec ifh hdr )
+		for (( i=0; i<4; i++ ))
+		do
+			cp ${petid}_b${filtername}.4dfp.${ext[$i]} ${petid}n.4dfp.${ext[$i]}
+		done
+		rm ${petid}_b${filtername}.4dfp.*
+	fi
+	cp ${petid}.info ${petid}n.info
+	petid=${petid}n
+	echo "petid=${petid}n" >> $paramsfn
+elif [ -n "$filterxy" ] || [  -n "$filterz" ]
+then
+	echo "Both xy and z filter size are needed!"
+	exit -1
+fi
+
+

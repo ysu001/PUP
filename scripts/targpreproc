@@ -1,0 +1,40 @@
+#!/bin/bash
+################################################################################
+# ROI target preprocessing. 						       #
+#                                                                              #
+# USAGE:								       #
+#	targpreproc paramsfn                                                   #
+#                                                                              #
+################################################################################
+# Yi Su, 01/08/2014
+
+idstr='$Id: targpreproc,v 1.0 2014/01/08 18:07:48 suy Exp $'
+
+echo $idstr
+
+program=`basename $0`
+
+if [ $# -lt 1 ]
+then
+	echo "Usage: $program paramsfn"
+	exit -1
+fi
+
+paramsfn=$1
+###############################################################################
+# Read PARAMS file
+source $paramsfn
+
+# Further development will improve this program which checks the validity of
+# the inputs specified in the params file
+
+###############################################################################
+if (( "$FS" == 1 ))
+then
+	fspreproc $paramsfn
+fi
+
+###############################################################################
+# Additional ROI target based processing is under development
+
+exit 0

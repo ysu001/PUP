@@ -1,0 +1,25 @@
+#!/bin/bash
+
+idstr='$Id: rsf2roilist,v 1.2 2013/12/24 21:10:59 suy Exp $'
+echo $idstr
+
+rsflist=$1
+LKUP=$2
+roilist=$3
+n=`wc -l "$rsflist" | gawk '{print $1}'`
+if [ -e $roilist ]
+then
+	rm $roilist
+fi
+touch $roilist
+
+for (( l=1; l<=$n; l++ ))
+do
+	label=`gawk 'NR=='$l' {print $1}' $rsflist`
+	nv=`gawk 'NR=='$l' {print $3}' $rsflist`	 
+	val=`gawk '/ '$label' / {print $1}' $LKUP`
+	if [ -n "$val" ]
+	then
+		echo $label $val $nv >>$roilist
+	fi
+done

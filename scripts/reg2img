@@ -1,0 +1,276 @@
+#!/bin/bash
+################################################################################
+# This program registers two 4dfp images using imgreg_4dfp		       #     
+################################################################################
+# Yi Su, 2012/03/16                                                            
+
+idstr='$Id: reg2img,v 1.1.1.1 2012/08/21 18:07:52 suy Exp $'
+echo $idstr
+program=`basename $0`
+if [ $# -lt 2 ]
+then
+	echo "Usage: $program refimg movimg"
+	echo "	options"
+	echo "	-rm refmask4dfp (use refmask4dfp as the mask for the reference"
+	echo "	                 image, default is no mask. if the -rm flag is"
+	echo "	                 set without a following mask file, mask is"
+	echo "	                 generated based on thresholding)"
+	echo "	-mm (generate mask for moving image based on thresholding"
+	echo "	     default is no mask)"
+	echo "	-rb fwhm (blur reference image with fwhm in mm (default 3))"
+	echo "	-mb fwhm (blur moving image with fwhm in mm (default 3))"
+	echo "	-i (within modality registration (default is cross modal))"
+	echo "	-f (only fine search is performed (default is with coarse"
+	echo "	    search))"
+	exit -1
+fi	
+
+################################
+# setting default parameters
+################################
+
+rm=0
+mm=0
+rb=3
+mb=3
+cross=1
+global=1
+rmsk='none'
+mmsk='none'
+
+###############################
+# parsing optional parameters
+###############################
+
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -i)
+      cross=0
+      ;;
+    -f)
+      global=0
+      ;;
+    -mm)
+      mm=1
+      ;;
+    -rm)
+      rm=1
+      grm=1
+      if [ -n "$2" ]
+      then
+        case "$2" in
+	  -*)
+	    ;;
+	  * )
+	    rmsk=$2
+	    shift
+	    if [ ! -f $rmsk ]; then
+	       echo "Error: Mask file doesn't exist!"
+	       exit -1
+	    fi
+	    grm=0
+	    ;;
+	esac   	       
+      fi
+      ;;
+    -rb)
+       if [ -n "$2" ]
+       then
+         case "$2" in
+	   -*)
+	     echo "Error: -rb must be followed with a number"
+	     exit -1
+	     ;;
+	   [0-9]*)
+	     rb=$2
+	     shift
+	     ;;
+	   *)     
+	     echo "Error: -rb must be followed with a number"
+	     exit -1
+	     ;;
+	 esac  
+       fi
+       ;;
+     -mb)   
+       if [ -n "$2" ]
+       then
+         case "$2" in
+	   -*)
+	     echo "Error: -rm must be followed with a number"
+	     exit -1
+	     ;;
+	   [0-9]*)
+	     mb=$2
+	     shift
+	     ;;
+	   *)     
+	     echo "Error: -rm must be followed with a number"
+	     exit -1
+	     ;;
+	 esac  
+       fi
+       ;;
+     -*)
+      echo "Unrecognized options for reg2img"
+      exit -1
+      ;;  
+     *)
+      refimg=$1
+      movimg=$2
+      shift
+      ;;  
+  esac
+  shift
+done
+
+if [ -n "$refimg" ]
+then
+    refdir=`dirname $refimg`
+    refname=`basename $refimg`
+    refroot=${refname%%.*}
+else
+    echo "$program: Missing refimg"
+    exit -1
+fi        
+if [ -n "$movimg" ]
+then
+    movdir=`dirname $movimg`
+    movname=`basename $movimg`
+    movroot=${movname%%.*}
+else
+    echo "$program: Missing movimg"
+    exit -1
+fi
+
+echo refroot: $refroot
+echo movroot: $movroot
+echo rb=$rb
+echo mb=$mb
+echo rm=$rm
+echo mm=$mm
+
+imgblur_4dfp $refimg $rb
+imgblur_4dfp $movimg $mb
+rbx=`echo $rb | awk '{print 10*$1}'`
+mbx=`echo $mb | awk '{print 10*$1}'`
+
+if [ "$rm" -eq 1 ] && [ "$grm" -eq 1 ]
+then
+    maskimg_4dfp ${refroot}"_b"${rbx} ${refroot}"_b"${rbx} -t.5 ${refroot}"_msk" -v1
+    nsl=`gawk '/matrix size \[3\]/ {print $NF}' ${refroot}".4dfp.ifh"`
+    msl=3
+    zero_slice_4dfp ${refroot}"_msk" z 1 $msl  ${refroot}"_mskz"
+    k=$((nsl-msl+1))
+    zero_slice_4dfp ${refroot}"_mskz" z $k $nsl ${refroot}"_msk"
+    rmsk=${refroot}"_msk"
+fi
+
+if [ "$mm" -eq 1 ]
+then
+    maskimg_4dfp ${movroot}"_b"${mbx} ${movroot}"_b"${mbx} -t.5 ${movroot}"_msk" -v1
+    nsl=`gawk '/matrix size \[3\]/ {print $NF}' ${movroot}".4dfp.ifh"`
+    msl=3
+    zero_slice_4dfp ${movroot}"_msk" z 1 $msl  ${movroot}"_mskz"
+    k=$((nsl-msl+1))
+    zero_slice_4dfp ${movroot}"_mskz" z $k $nsl ${movroot}"_msk"
+    mmsk=${movroot}"_msk"
+fi
+
+echo rmsk=$rmsk
+echo mmsk=$mmsk
+ 
+if [ "$cross" -eq 1 ] && [ "$global" -eq 1 ]
+then
+    modes=( 4099 2051 10243 )
+fi
+if [ "$cross" -eq 1 ] && [ "$global" -eq 0 ]
+then
+    modes=( 2051 10243 )
+fi
+if [ "$cross" -eq 0 ] && [ "$global" -eq 1 ]
+then
+    modes=( 4355 2307 10499 )
+fi
+if [ "$cross" -eq 0 ] && [ "$global" -eq 0 ]
+then
+    modes=( 2307 10499 )
+fi
+
+echo "modes="${modes[*]}
+
+###################################################################################################
+# COMPUTE REGISTRATIONS
+log=${refroot}_${movroot}_${program}".log"
+touch $log
+date >> $log
+echo ;
+echo imgreg_4dfp output to $log ;
+echo "Please wait ..."
+
+oristr=( T C S )
+t4file1=${movroot}"_to_"${refroot}"_t4"
+t4file2=${refroot}"_to_"${movroot}"_t4"
+if [ ! -e $t4file1 ]
+then
+	ori=`awk '/orientation/{print $NF - 1}' ${refdir}/${refroot}".4dfp.ifh"`
+	ori=$((ori-1))
+	t4_inv ${RELEASE}/${oristr[$ori]}"_t4" temp$$"_t4"
+	ori=`awk '/orientation/{print $NF - 1}' ${movdir}/${movroot}".4dfp.ifh"`
+	ori=$((ori-1))
+	t4_mul ${RELEASE}/${oristr[$ori]}"_t4" temp$$"_t4" $t4file1
+	rm temp$$_t4			
+fi
+if [ ! -e $t4file2 ]
+then
+	ori=`awk '/orientation/{print $NF - 1}' ${movdir}/${movroot}".4dfp.ifh"`
+	ori=$((ori-1))
+	t4_inv ${RELEASE}/${oristr[$ori]}"_t4" temp$$"_t4"
+	ori=`awk '/orientation/{print $NF - 1}' ${refdir}/${refroot}".4dfp.ifh"`
+	ori=$((ori-1))
+	t4_mul ${RELEASE}/${oristr[$ori]}"_t4" temp$$"_t4" $t4file2
+	rm temp$$_t4		
+fi
+
+refi=${refroot}"_b"$rbx
+movi=${movroot}"_b"$mbx
+
+nm=${#modes[@]}
+for (( i=0; i<nm; i++ ))
+do
+    mode=${modes[$i]}
+    echo >> $log
+    echo imgreg_4dfp $refi $rmsk $movi $mmsk $t4file1 $mode
+    echo imgreg_4dfp $refi $rmsk $movi $mmsk $t4file1 $mode >> $log
+         imgreg_4dfp $refi $rmsk $movi $mmsk $t4file1 $mode >> $log
+    echo >> $log
+    echo imgreg_4dfp $movi $mmsk $refi $rmsk $t4file2 $mode
+    echo imgreg_4dfp $movi $mmsk $refi $rmsk $t4file2 $mode >> $log
+         imgreg_4dfp $movi $mmsk $refi $rmsk $t4file2 $mode >> $log    
+done
+
+##################################################################################################
+#Reconciliation: t4_resolve target t4 files and resolve log are created
+
+resolvelog=${refroot}"_"${movroot}"_"${program}"_resolve.log"
+echo t4_resolve ${refroot} ${movroot} -o${refroot}
+t4_resolve ${refroot} ${movroot} -o${refroot} > $resolvelog
+
+error=`gawk '/estimate total rotation error/{rot = $5} /estimate total translation error/{trans = $5} END{printf ("%3d", 100*(trans + 1.4*rot))}' $resolvelog`
+echo                           >> $resolvelog
+echo "ERROR = " $error
+echo "ERROR = " $error >> $resolvelog
+if (( $error < 100 )) 
+then
+	echo "ERROR is LOW, image reconciliation is good"
+	echo "ERROR is LOW, image reconciliation is good"             >> $resolvelog
+elif (( $error > 200 )) 
+then
+	echo "ERROR is HIGH, cross-image reconciliation is poor"
+	echo "ERROR is HIGH, cross-image reconciliation is poor"      >> $resolvelog
+else
+	echo "ERROR is MED, cross-image reconciliation is acceptable"
+	echo "ERROR is MED, cross-image reconciliation is acceptable" >> $resolvelog
+fi
+

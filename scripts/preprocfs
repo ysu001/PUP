@@ -1,0 +1,67 @@
+#!/bin/bash
+################################################################################
+# Preprocessing FREESURFER output files for PET ROI analysis                   #
+#                                   				               #
+# USAGE:								       #
+#	fspreproc paramsfn                                                     #
+#                                                                              #
+# This script reads a params file that includes:                               #
+#	fsdir: location of FREESURFER mgz out files			       #
+#	wmparc:	FREESURFER segmentation file (wmparc.mgz)		       #
+#	t1: FREESURFER MR file (t1.mgz or orig.mgz)			       #
+#       rsfmask:the root name of the image file that defines the RSF PVC       #
+#		correction mask						       #
+#	rsflist:the text file that lists ROI names and corresponding roi label #
+#		in the rsfmask file					       #
+#	roilist:the text file that lists ROI names and corresponding roi label #
+#               in the rsfmask file                                            #
+#	fwhm:	PET resolution in mm					       #
+#	rsfflag: whether RSF PVC will be performed			       #
+#	pvc2cflag: whether PVC2C will be performed			       #
+#									       #
+#									       #
+# The output of this program is a series of TAC curves			       #
+################################################################################
+# Yi Su, 12/24/2013
+
+idstr='$Id: fspreproc,v 1.0 2013/12/24 18:07:48 suy Exp $'
+
+echo $idstr
+
+program=`basename $0`
+
+if [ $# -lt 1 ]
+then
+	echo "Usage: $program paramsfn"
+	exit -1
+fi
+
+paramsfn=$1
+###############################################################################
+# Read PARAMS file
+source $paramsfn
+
+# Further development will improve this program which checks the validity of
+# the inputs specified in the params file
+
+###############################################################################
+cp $fsdir/$t1 .
+cp $fsdir/$wmparc .
+
+mgzto4dfp $t1
+mgzto4dfp $wmparc
+
+mrroot=${t1%.*}
+mrroot=${mrroot}001
+fsfroot=${fsfname%.*}
+fsfroot=${fsfroot}001
+
+###############################################################################
+# Processing freesurfer rois, whole head roi, and prepare for roi analysis
+if [ ! -e ${mrroot}"_g9.4dfp.img" ] 
+then
+	gauss_4dfp ${mrroot} 0.9
+fi
+maskimg_4dfp -v1 -t15 T1001_g9  T1001_g9 Head_Mask
+PreprocessRSFtest2 $fsfroot Head_Mask  RSFMask ROIlist.txt $fslut
+

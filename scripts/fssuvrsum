@@ -1,0 +1,209 @@
+#!/bin/bash
+################################################################################
+# Summarize FreeSurfer Based PET SUVR ROI analysis			       #
+#                                   				               #
+# USAGE:								       #
+#	fssuvrsum petid roisfn suvrpostfix sumpostfix	                       #
+#	petid:	petid is a string associated with the file name PET data in    #
+#               4dfp format.						       #
+#	roisfn:	the text file that lists ROIs to be reported                   #
+#	suvrpostfix: postfix for the suvr file, standard postfix is ".suvr", it#
+#		     could have extra strings, for example the postfix for an  #
+#		     RSF corrected tac is "_RSF.suvr". The suvr file for a     #
+#		     specific ROI and dataset would follow the naming	       #
+#		     convention: ${petid}_${ROINAME}${suvrpostfix}	       #
+#	sumpostfix:  postfix for the output file, standard postfix is	       #
+#		     ".txt", it could have extra strings, for example the      #
+#		     postfix for an RSF corrected opt is "_RSF.txt". 	       #
+#		     The opt file follow the naming convention: 	       #
+#				${petid}_SUVR${sumpostfix}		       #
+#			and	${petid}_SUVRLR${sumpostfix}		       #
+#									       #
+# The output of this program is a text file that summarizes the SUVR outputs   #
+################################################################################
+# Yi Su, 01/07/2014
+
+idstr='$Id: fssuvrsum,v 1.0 2014/01/07 18:07:48 suy Exp $'
+
+echo $idstr
+
+program=`basename $0`
+
+if [ $# -lt 4 ]
+then
+	echo "Usage: $program petid roisfn suvrpostfix sumpostfix"
+	exit -1
+fi
+
+petid=$1
+roisfn=$2
+suvrpostfix=$3
+sumpostfix=$4
+
+optfn=${petid}_SUVR${sumpostfix}
+optlrfn=${petid}_SUVRLR${sumpostfix}
+###############################################################################
+nline=`wc -l $roisfn | gawk '{print $1}'`
+
+printf "%-35s %11s %11s\n" Structure_Name NVox SUVR > $optfn
+printf "%-35s %11s %11s\n" Structure_Name NVox SUVR > $optlrfn
+
+for (( i=1; i<=$nline; i++ ))
+do
+	ROI=`gawk 'NR=='$i' {print $1}'  $roisfn`
+	flag=`gawk 'NR=='$i' {print $2}'  $roisfn`
+	if (( $flag == 1 )) # ROIs with the naming convention Left/Right-${ROI}
+	then
+		lfn=${petid}_Left-${ROI}${suvrpostfix}
+		if [ -e $lfn ]
+		then
+			lnv=`gawk 'NR==3 {print $2}'  $lfn`
+			lsuvr=`gawk 'NR==3 {print $3}'  $lfn`
+		else
+			lnv=0
+			lsuvr=0
+		fi
+		printf "%-35s %11d %11.4f\n" Left-${ROI} $lnv $lsuvr >> $optlrfn
+
+		rfn=${petid}_Right-${ROI}${suvrpostfix}
+		if [ -e $rfn ]
+		then
+			rnv=`gawk 'NR==3 {print $2}'  $rfn`
+			rsuvr=`gawk 'NR==3 {print $3}'  $rfn`
+		else
+			rnv=0
+			rsuvr=0
+		fi
+		printf "%-35s %11d %11.4f\n" Right-${ROI} $rnv $rsuvr >> $optlrfn
+
+		suvr=$(echo "scale=6; ($lsuvr*$lnv+$rsuvr*$rnv)/($lnv+$rnv+.0001)" | bc)
+		(( nv=$lnv+$rnv ))
+		printf "%-35s %11d %11.4f\n" ${ROI} $nv $suvr >> $optfn
+	elif (( $flag == 0 ))
+	then
+		fn=${petid}_${ROI}${suvrpostfix}
+		if [ -e $fn ]
+		then
+			nv=`gawk 'NR==3 {print $2}'  $fn`
+			suvr=`gawk 'NR==3 {print $3}'  $fn`
+		else
+			nv=0
+			suvr=0
+		fi
+		printf "%-35s %11d %11.4f\n" ${ROI} $nv $suvr >> $optfn
+		printf "%-35s %11d %11.4f\n" ${ROI} $nv $suvr >> $optlrfn
+	elif (( $flag == 2 ))
+	then
+		# Cortical Gray
+		lfn=${petid}"_ctx-lh-"${ROI}${suvrpostfix}
+		if [ -e $lfn ]
+		then
+			lnv=`gawk 'NR==3 {print $2}'  $lfn`
+			lsuvr=`gawk 'NR==3 {print $3}'  $lfn`
+		else
+			lnv=0
+			lsuvr=0
+		fi
+		printf "%-35s %11d %11.4f\n" ctx-lh-${ROI} $lnv $lsuvr >> $optlrfn
+
+		rfn=${petid}"_ctx-rh-"${ROI}${suvrpostfix}
+		if [ -e $rfn ]
+		then
+			rnv=`gawk 'NR==3 {print $2}'  $rfn`
+			rsuvr=`gawk 'NR==3 {print $3}'  $rfn`
+		else
+			rnv=0
+			rsuvr=0
+		fi
+		printf "%-35s %11d %11.4f\n" ctx-rh-${ROI} $rnv $rsuvr >> $optlrfn
+
+		suvr=$(echo "scale=6; ($lsuvr*$lnv+$rsuvr*$rnv)/($lnv+$rnv+.0001)" | bc)
+		(( nv=$lnv+$rnv ))
+		printf "%-35s %11d %11.4f\n" ctx-${ROI} $nv $suvr >> $optfn
+		
+		# Cortical White
+		lfn=${petid}"_wm-lh-"${ROI}${suvrpostfix}
+		if [ -e $lfn ]
+		then
+			lnv=`gawk 'NR==3 {print $2}'  $lfn`
+			lsuvr=`gawk 'NR==3 {print $3}'  $lfn`
+		else
+			lnv=0
+			lsuvr=0
+		fi
+		printf "%-35s %11d %11.4f\n" wm-lh-${ROI} $lnv $lsuvr >> wmlr$$.txt
+
+		rfn=${petid}"_wm-rh-"${ROI}${suvrpostfix}
+		if [ -e $rfn ]
+		then
+			rnv=`gawk 'NR==3 {print $2}'  $rfn`
+			rsuvr=`gawk 'NR==3 {print $3}'  $rfn`
+		else
+			rnv=0
+			rsuvr=0
+		fi
+		printf "%-35s %11d %11.4f\n" wm-rh-${ROI} $rnv $rsuvr >> wmlr$$.txt
+
+		suvr=$(echo "scale=6; ($lsuvr*$lnv+$rsuvr*$rnv)/($lnv+$rnv+.0001)" | bc)
+		(( nv=$lnv+$rnv ))
+		printf "%-35s %11d %11.4f\n" wm-${ROI} $nv $suvr >> wm$$.txt
+	fi
+done
+cat wm$$.txt >> $optfn
+cat wmlr$$.txt >> $optlrfn
+rm wm$$.txt
+rm wmlr$$.txt
+
+# Calculate MCSUVR
+
+# GR
+n1=`gawk '/ctx-lateralorbitofrontal/ {print $2}' $optfn`
+v1=`gawk '/ctx-lateralorbitofrontal/ {print $3}' $optfn`
+n2=`gawk '/ctx-medialorbitofrontal/ {print $2}' $optfn`
+v2=`gawk '/ctx-medialorbitofrontal/ {print $3}' $optfn`
+nv=$(echo "scale=8; $n1+$n2" | bc)
+suvr=$(echo "scale=8; $v1*$n1/$nv+$v2*$n2/$nv" | bc)
+printf "%-35s %11d %11.4f\n" GR_FS $nv $suvr >> $optfn
+N=$nv
+MC=$suvr
+
+# TEMP
+n1=`gawk '/ctx-middletemporal/ {print $2}' $optfn`
+v1=`gawk '/ctx-middletemporal/ {print $3}' $optfn`
+n2=`gawk '/ctx-superiortemporal/ {print $2}' $optfn`
+v2=`gawk '/ctx-superiortemporal/ {print $3}' $optfn`
+nv=$(echo "scale=8; $n1+$n2" | bc)
+suvr=$(echo "scale=8; $v1*$n1/$nv+$v2*$n2/$nv" | bc)
+printf "%-35s %11d %11.4f\n" TEMP_FS $nv $suvr >> $optfn
+MC=$(echo "scale=8; $suvr+$MC" | bc)
+N=$(echo "scale=8; $nv+$N" | bc)
+
+# OCC
+n1=`gawk '/ctx-cuneus/ {print $2}' $optfn`
+v1=`gawk '/ctx-cuneus/ {print $3}' $optfn`
+n2=`gawk '/ctx-lingual/ {print $2}' $optfn`
+v2=`gawk '/ctx-lingual/ {print $3}' $optfn`
+nv=$(echo "scale=8; $n1+$n2" | bc)
+suvr=$(echo "scale=8; $v1*$n1/$nv+$v2*$n2/$nv" | bc)
+printf "%-35s %11d %11.4f\n" OCC_FS $nv $suvr >> $optfn
+
+# PREF
+n1=`gawk '/ctx-rostralmiddlefrontal/ {print $2}' $optfn`
+v1=`gawk '/ctx-rostralmiddlefrontal/ {print $3}' $optfn`
+n2=`gawk '/ctx-superiorfrontal/ {print $2}' $optfn`
+v2=`gawk '/ctx-superiorfrontal/ {print $3}' $optfn`
+nv=$(echo "scale=8; $n1+$n2" | bc)
+suvr=$(echo "scale=8; $v1*$n1/$nv+$v2*$n2/$nv" | bc)
+printf "%-35s %11d %11.4f\n" PREF_FS $nv $suvr >> $optfn
+MC=$(echo "scale=8; $suvr+$MC" | bc)
+N=$(echo "scale=8; $nv+$N" | bc)
+
+# MC
+nv=`gawk '/ctx-precuneus/ {print $2}' $optfn`
+suvr=`gawk '/ctx-precuneus/ {print $3}' $optfn`
+MC=$(echo "scale=8; $suvr+$MC" | bc)
+N=$(echo "scale=8; $nv+$N" | bc)
+MC=$(echo "scale=8; $MC/4" | bc)
+printf "%-35s %11d %11.4f\n" MC $N $MC >> $optfn
+
+

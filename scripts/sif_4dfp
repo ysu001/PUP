@@ -1,0 +1,149 @@
+#!/bin/bash
+###############################################################################
+# Program to convert Siemens interfile data into 4dfp format data             #
+###############################################################################
+
+# Yi Su, 2013/10/11
+
+idstr='$Id: sif_4dfp,v 1.1.1.1 2013/10/11 15:32:52 suy Exp $'
+echo $idstr
+program=`basename $0`
+if [ $# -lt 2 ]
+then
+	echo "Usage: $program sifstr outroot"
+	exit -1
+fi
+sifstr=$1
+outroot=$2
+
+echo rec ${outroot}.4dfp.img `date` `whoami` > ${outroot}1.4dfp.img.rec
+echo $program $@ >> ${outroot}1.4dfp.img.rec
+echo $idstr >> ${outroot}1.4dfp.img.rec
+
+#Process master header file sifstr
+sifdir=`dirname $sifstr`
+sifname=`basename $sifstr`
+
+#Get total number of frames
+nf=`gawk -F= '/total number of data sets/{print $2}' $sifstr | sed "s/\r//"`
+echo $nf
+#Process first frame
+hdrfn=`grep "data set\[1\]" $sifstr | cut -f2 -d","`
+datafn=`grep "data set\[1\]" $sifstr | cut -f3 -d"," | sed "s/}.//"`
+echo $hdrfn
+echo $datafn
+i=1
+st=`grep "acquisition start time" $sifdir/$hdrfn | cut -f3 -d"," |sed "s/}.//"`
+frd=`grep "slice duration" $sifdir/$hdrfn | cut -f3 -d"," |sed "s/}.//"`
+dcf=`grep "decay correction factor" $sifdir/$hdrfn | cut -f3 -d"," |sed "s/}.//"`
+t=$(echo "scale=6; $st+$frd/2" |bc)
+
+format=`gawk -F= '/number format/ {print $2}' $sifdir/$hdrfn  | sed "s/\r//"`
+bpp=`gawk -F= '/bytes per pixel/ {print $2}'  $sifdir/$hdrfn | sed "s/\r//"`
+endian=`gawk -F= '/byte order/ {print $2}'  $sifdir/$hdrfn | sed "s/\r//"`
+sz1=`gawk -F= '/matrix size/ && /\[1\]/ {print $2}'  $sifdir/$hdrfn | sed "s/\r//"`
+sz2=`gawk -F= '/matrix size/ && /\[2\]/ {print $2}'  $sifdir/$hdrfn | sed "s/\r//"`
+sz3=`gawk -F= '/matrix size/ && /\[3\]/ {print $2}'  $sifdir/$hdrfn | sed "s/\r//"`
+sf1=`gawk -F= '/scale/ && /\[1\]/ {print $2}'  $sifdir/$hdrfn | sed "s/\r//"`
+sf2=`gawk -F= '/scale/ && /\[2\]/ {print $2}'  $sifdir/$hdrfn | sed "s/\r//"`
+sf3=`gawk -F= '/scale/ && /\[3\]/ {print $2}'  $sifdir/$hdrfn | sed "s/\r//"`
+
+# write 4dfp ifh header for the first frame
+tmproot=${outroot}_f1_fz
+tmpfr=${tmproot}.4dfp.ifh
+echo "INTERFILE	:=" >> $tmpfr
+echo "version of keys	:= 3.3" >> $tmpfr
+echo "conversion program	:= sif_4dfp" >> $tmpfr
+echo "number format	:= $format" >> $tmpfr
+echo "name of data file	:= ${tmproot}.4dfp.img" >> $tmpfr
+echo "number of bytes per pixel	:= $bpp" >> $tmpfr
+echo "imagedata byte order	:= ${endian,,}" >> $tmpfr
+echo "orientation		:= 2" >> $tmpfr
+echo "number of dimensions	:= 4" >> $tmpfr
+echo "matrix size [1]	:= $sz1" >> $tmpfr
+echo "matrix size [2]	:= $sz2" >> $tmpfr
+echo "matrix size [3]	:= $sz3" >> $tmpfr
+echo "matrix size [4]	:= 1" >> $tmpfr
+echo "scaling factor (mm/pixel) [1]	:= $sf1" >> $tmpfr
+echo "scaling factor (mm/pixel) [2]	:= $sf2" >> $tmpfr
+echo "scaling factor (mm/pixel) [3]	:= $sf3" >> $tmpfr
+
+# create 4dfp for first frame
+ifh2hdr ${tmproot}
+ln -s ${sifdir}/${datafn} ${tmproot}.4dfp.img
+flip_4dfp -z ${tmproot} ${outroot}_f1
+rm ${tmproot}.4dfp.*
+
+# write rec file
+printf 'Frame     \tLength(msec)\tMidpoint(sec)\tStart(msec)\t Frame_Min\t Frame_Max\t Decay_Fac\tRescale\n'  >> ${outroot}1.4dfp.img.rec
+frd1=$(echo "scale=6; $frd*1000" | bc )
+st1=$(echo "scale=6; $st*1000" | bc )
+imax=`imgmax_4dfp ${outroot}_f1 | gawk '{print $1}'`
+imin=`imgmax_4dfp -m ${outroot}_f1 | gawk '{print $2}'`
+printf 'Frame_%d \t%10.0f \t%10.2f \t%10.0f \t%10.2f \t%10.2f \t%10.6f \t%10s\n' $i $frd1 $t $st1 $imin $imax $dcf 1 >>${outroot}1.4dfp.img.rec
+
+# create lst file
+echo ${outroot}_f1 > ${outroot}.lst
+
+if (( $nf > 1 ))
+then
+    for (( i=2; i<=$nf; i++ ))
+    do
+	hdrfn=`grep "data set\[$i\]" $sifstr | cut -f2 -d","`
+	datafn=`grep "data set\[$i\]" $sifstr | cut -f3 -d"," | sed "s/}.//"`
+	st=`grep "acquisition start time" $sifdir/$hdrfn | cut -f3 -d"," |sed "s/}.//"`
+	frd=`grep "slice duration" $sifdir/$hdrfn | cut -f3 -d"," |sed "s/}.//"`
+	t=$(echo "scale=6; $st+$frd/2" |bc)
+	dcf=`grep "decay correction factor" $sifdir/$hdrfn | cut -f3 -d"," |sed "s/}.//"`
+
+	# write 4dfp ifh header for the $ith frame
+	tmproot=${outroot}_f${i}_fz
+	tmpfr=${tmproot}.4dfp.ifh
+	echo "INTERFILE	:=" >> $tmpfr
+	echo "version of keys	:= 3.3" >> $tmpfr
+	echo "conversion program	:= sif_4dfp" >> $tmpfr
+	echo "number format	:= $format" >> $tmpfr
+	echo "name of data file	:= ${tmproot}.4dfp.img" >> $tmpfr
+	echo "number of bytes per pixel	:= $bpp" >> $tmpfr
+	echo "imagedata byte order	:= ${endian,,}" >> $tmpfr
+	echo "orientation		:= 2" >> $tmpfr
+	echo "number of dimensions	:= 4" >> $tmpfr
+	echo "matrix size [1]	:= $sz1" >> $tmpfr
+	echo "matrix size [2]	:= $sz2" >> $tmpfr
+	echo "matrix size [3]	:= $sz3" >> $tmpfr
+	echo "matrix size [4]	:= 1" >> $tmpfr
+	echo "scaling factor (mm/pixel) [1]	:= $sf1" >> $tmpfr
+	echo "scaling factor (mm/pixel) [2]	:= $sf2" >> $tmpfr
+	echo "scaling factor (mm/pixel) [3]	:= $sf3" >> $tmpfr
+
+	# create 4dfp for the $ith frame
+	ifh2hdr ${tmproot}
+	ln -s ${sifdir}/${datafn} ${tmproot}.4dfp.img
+	flip_4dfp -z ${tmproot} ${outroot}_f${i}
+	rm ${tmproot}.4dfp.*
+
+	# write info file	
+	frd1=$(echo "scale=6; $frd*1000" | bc )
+	st1=$(echo "scale=6; $st*1000" | bc )
+	imax=`imgmax_4dfp ${outroot}_f${i} | gawk '{print $1}'`
+	imin=`imgmax_4dfp -m ${outroot}_f${i} | gawk '{print $2}'`
+	printf 'Frame_%d \t%10.0f \t%10.2f \t%10.0f \t%10.2f \t%10.2f \t%10.6f \t%10s\n' $i $frd1 $t $st1 $imin $imax $dcf 1 >>${outroot}1.4dfp.img.rec
+	
+	# create lst file
+	echo ${outroot}_f${i} >> ${outroot}.lst
+    done
+    paste_4dfp -a ${outroot}.lst $outroot
+    rm ${outroot}_f*.4dfp.*
+    rm ${outroot}.lst
+else
+    cp ${outroot}_f1.4dfp.img ${outroot}.4dfp.img
+    cp ${outroot}_f1.4dfp.ifh ${outroot}.4dfp.ifh
+fi
+instr=`grep "conversion program" ${outroot}.4dfp.ifh`
+outstr="conversion program	:= sif_4dfp"
+sed "s/$instr/$outstr/" -i ${outroot}.4dfp.ifh
+ifh2hdr ${outroot}
+rm ${outroot}.4dfp.img.rec
+cp ${outroot}1.4dfp.img.rec ${outroot}.4dfp.img.rec
+echo endrec `date` `whoami` >> ${outroot}.4dfp.img.rec
+rm ${outroot}1.4dfp.img.rec
