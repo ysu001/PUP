@@ -81,7 +81,7 @@ then
 		rm ${petid}_bxy${filterxyname}_bz${filterzname}.4dfp.*
 	else
 		tmp=$(echo "scale=6; $filterxy*10+.499999" | bc)
-		filtername= ${tmp%.*}
+		filtername=${tmp%.*}
 		imgblur_4dfp ${petid} $filterxy
 		ext=( img img.rec ifh hdr )
 		for (( i=0; i<4; i++ ))
