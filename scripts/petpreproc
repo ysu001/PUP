@@ -92,7 +92,7 @@ then
 	fi
 	cp ${petid}.info ${petid}n.info
 	petid=${petid}n
-	echo "petid=${petid}n" >> $paramsfn
+	echo "petid=${petid}" >> $paramsfn
 elif [ -n "$filterxy" ] || [  -n "$filterz" ]
 then
 	echo "Both xy and z filter size are needed!"
