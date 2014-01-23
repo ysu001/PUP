@@ -126,7 +126,7 @@ then
 	petroiint $paramsfn
 	if [ "$?" -eq "0" ]
 	then
-		petrefroi $paramfn
+		petrefroi $paramsfn
 		petsuvr $paramsfn	
 		if [ "$?" -eq "0" ]
 		then
@@ -135,7 +135,7 @@ then
 			echo "SUVR Analysis Failure!"
 		fi
 	else
-		echo " REF TAC extraction ERROR!"		
+		echo " Static ROI intensity extraction ERROR!"		
 	fi
 fi
 
