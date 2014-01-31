@@ -24,7 +24,7 @@
 ################################################################################
 # Yi Su, 11/05/2013
 
-idstr='$Id: petpreproc,v 1.0 2013/11/05 18:07:48 suy Exp $'
+idstr='$Id: petpreproc,v 1.0 Fri Jan 31 09:39:08 CST 2014 suy $'
 
 echo $idstr
 
@@ -62,7 +62,6 @@ PETinfo $petid $format $delay
 # Filtering if requested
 if [ -n "$filterxy" ] && [ -n "$filterz" ]
 then
-	echo $?
 	if [ "$filterxy" != "$filterz" ]
 	then
 		tmp=$(echo "scale=6; $filterxy*10+.499999" | bc)

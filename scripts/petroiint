@@ -24,7 +24,7 @@
 ################################################################################
 # Yi Su, 01/07/2014
 
-idstr='$Id: petroiint,v 1.0 2014/01/07 18:07:48 suy Exp $'
+idstr='$Id: petroiint,v 1.0 Fri Jan 31 09:40:16 CST 2014 suy $'
 
 echo $idstr
 
@@ -46,7 +46,7 @@ source $paramsfn
 NROI=`wc -l $roilist | gawk '{print $1}'`
 ###############################################################################
 # RSF preprocessing if requested
-if (( $rsfflag == 1 ))
+if (( rsfflag == 1 ))
 then
 	if [ ! -e RSFMat.dat ]
 	then
@@ -56,7 +56,7 @@ fi
 
 ###############################################################################
 # PVC2C preprocessing if requested
-if (( $pvc2cflag == 1 ))
+if (( pvc2cflag == 1 ))
 then
 	if [ ! -e pvc2c.txt ]
 	then
@@ -71,11 +71,11 @@ fi
 ###############################################################################
 # Perform ROI analysis
 t4img_4dfp $pet2roit4 $petid ${petid}_on_roi -O${roiimg}
-if (( $rsfflag == 1 ))
+if (( rsfflag == 1 ))
 then
 	rsfroieval2 ${petid}"_on_roi" $roiimg RSFMat.dat PETFOV $roilist $NROI 10 ${petid} 1
 else
-	roieval2 ${petid}"_on_roi" $roiimg PETFOV $roilist $NROI ${petid} 1
+	roieval3 ${petid}"_on_roi" $roiimg PETFOV $roilist $NROI ${petid} 1
 fi
 
 
@@ -92,11 +92,11 @@ do
 	
 	NVOX=`gawk 'NR=='$l' {print $2}' ${petid}_ROI2_f1`
 	printf "%9s %15s %15s %15s %15s %10d\n" "Frame_#" "Start_Time_(s)" "Duration_(s)"  "Mean" "NVoxels=" $NVOX > $tacfn
-	if (( $rsfflag == 1 ))
+	if (( rsfflag == 1 ))
 	then
 		printf "%9s %15s %15s %15s %15s %10d\n" "Frame_#" "Start_Time_(s)" "Duration_(s)"  "Mean"  "NVoxels=" $NVOX > $rsftacfn
 	fi
-	if (( $pvc2cflag == 1 ))
+	if (( pvc2cflag == 1 ))
 	then
 		printf "%9s %15s %15s %15s %15s %10d\n" "Frame_#" "Start_Time_(s)" "Duration_(s)"  "Mean"  "NVoxels=" $NVOX > $pvc2ctacfn
 	fi
@@ -107,13 +107,13 @@ do
 	td=`gawk 'NR==1 {print $3}'  ${petid}".info"`
 	meanroi=`gawk 'NR=='$l' {print $3}' $framefn`
 	printf "%9d %15f %15f %15f\n" 1 $ts $td $meanroi >> $tacfn
-	if (( $rsfflag == 1 ))
+	if (( rsfflag == 1 ))
 	then		
 		meanroirsf=`gawk 'NR=='$l' {print $3}' $rsffn`
 		printf "%9d %15f %15f %15f\n" 1 $ts $td $meanroirsf >> $rsftacfn
 	fi
 
-	if (( $pvc2cflag == 1 ))
+	if (( pvc2cflag == 1 ))
 	then
 		cf=`gawk '/'$label'/ {print $3}' pvc2c.txt`		
 		meanroipvc2c=$(echo "scale=8; $meanroi/($cf+0.00001)" | bc) 

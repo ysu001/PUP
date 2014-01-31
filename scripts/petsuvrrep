@@ -8,7 +8,7 @@
 ################################################################################
 # Yi Su, 01/08/2014
 
-idstr='$Id: petsuvrrep,v 1.0 2014/01/08 18:07:48 suy Exp $'
+idstr='$Id: petsuvrrep,v 1.0 Fri Jan 31 09:39:59 CST 2014 suy $'
 
 echo $idstr
 
@@ -29,23 +29,27 @@ source $paramsfn
 # the inputs specified in the params file
 
 ###############################################################################
-if (( $FS == 1 ))
+if (( FS == 1 ))
 then
 	fssuvrsum $petid $roisfn .suvr .txt
-	if (( $rsfflag == 1 ))
+	if (( rsfflag == 1 ))
 	then
 		fssuvrsum $petid $roisfn _RSF.suvr _RSF.txt
 	fi
-	if (( $pvc2cflag == 1 ))
+	if (( pvc2cflag == 1 ))
 	then
 		fssuvrsum $petid $roisfn _PVC2C.suvr _PVC2C.txt
-	fi
-	
+	fi	
 fi
+
 
 ###############################################################################
 # Additional ROI target based processing will be included in the future
 
+if (( tgflag == 1 ))
+then
+	petatlsuvrsum $petid $roilist .suvr .txt
+fi
 
 
 ###############################################################################

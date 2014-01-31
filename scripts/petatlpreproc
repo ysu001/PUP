@@ -1,0 +1,52 @@
+#!/bin/bash
+################################################################################
+# Preprocessing pet atlas template files to prepare for further processing     #
+#                                   				               #
+# USAGE:								       #
+#	petatlpreproc paramsfn                                                 #
+#                                                                              #
+# This script reads a params file that includes:                               #
+#	petatldir: location of pet atlas template files			       #
+#	refimg:	pet atlas image 					       #
+#       roiimg: roi image file in pet atlas space			       #
+#	roilist:the text file that lists ROI names and corresponding roi label #
+#               in the roiimg file, it only include brain regions for regional #
+#		analysis.			                               #
+#	maskroot: atlas brain mask image file root			       #
+#									       #
+#									       #
+################################################################################
+# Yi Su, 01/29/2014
+
+idstr='$Id: petatlpreproc,v 1.0 Wed Jan 29 09:00:30 CST 2014 suy $'
+
+echo $idstr
+
+program=`basename $0`
+
+if [ $# -lt 1 ]
+then
+	echo "Usage: $program paramsfn"
+	exit -1
+fi
+
+paramsfn=$1
+###############################################################################
+# Read PARAMS file
+source $paramsfn
+
+# Further development will improve this program which checks the validity of
+# the inputs specified in the params file
+
+###############################################################################
+# Populate pet atlas files
+
+cp $petatldir/${refimg}.4dfp.* .  # pet atlas template
+cp $petatldir/${roiimg}.4dfp.* .  # pet roi template
+cp $petatldir/${roilist} . # pet roi list
+cp $petatldir/${maskroot}.4dfp.* . # atlas brain mask file 
+
+ ###############################################################################
+# populate maskfile parameter in the params file for further processing
+echo "maskfile=${maskroot}.4dfp.img" >> $paramsfn
+

@@ -26,7 +26,7 @@
 ################################################################################
 # Yi Su, 12/24/2013
 
-idstr='$Id: fspreproc,v 1.0 2013/12/24 18:07:48 suy Exp $'
+idstr='$Id: fspreproc,v 1.0 Fri Jan 31 09:39:46 CST 2014 suy $'
 
 echo $idstr
 
@@ -75,3 +75,8 @@ if (( $pvc2cflag == 1 ))
 then
 	fs2brain $wmparcroot
 fi
+
+###############################################################################
+# populate maskfile parameter in the params file for further processing
+echo "maskfile=${wmparcroot}.4dfp.img" >> $paramsfn
+

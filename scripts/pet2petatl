@@ -1,15 +1,15 @@
 #!/bin/bash
 ################################################################################
-# This program registers two 4dfp images using imgreg_4dfp		       #     
+# This program registers 4dfp pet image to a population based pet atlas	       #     
 ################################################################################
-# Yi Su, 2012/03/16                                                            
+# Yi Su, 2013/07/05                                                            
 
-idstr='$Id: reg2img,v 1.1 Fri Jan 31 09:45:13 CST 2014 suy $'
+idstr='$Id: pet2petatl,v 1.0 Fri Jan 31 09:38:42 CST 2014 suy $'
 echo $idstr
 program=`basename $0`
 if [ $# -lt 2 ]
 then
-	echo "Usage: $program refimg movimg"
+	echo "Usage: $program atlas movimg"
 	echo "	options"
 	echo "	-rm refmask4dfp (use refmask4dfp as the mask for the reference"
 	echo "	                 image, default is no mask. if the -rm flag is"
@@ -17,11 +17,7 @@ then
 	echo "	                 generated based on thresholding)"
 	echo "	-mm (generate mask for moving image based on thresholding"
 	echo "	     default is no mask)"
-	echo "	-rb fwhm (blur reference image with fwhm in mm (default 3))"
 	echo "	-mb fwhm (blur moving image with fwhm in mm (default 3))"
-	echo "	-i (within modality registration (default is cross modal))"
-	echo "	-f (only fine search is performed (default is with coarse"
-	echo "	    search))"
 	exit -1
 fi	
 
@@ -29,12 +25,9 @@ fi
 # setting default parameters
 ################################
 
-rm=0
+rmf=0
 mm=0
-rb=3
 mb=3
-cross=1
-global=1
 rmsk='none'
 mmsk='none'
 
@@ -45,17 +38,11 @@ mmsk='none'
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    -i)
-      cross=0
-      ;;
-    -f)
-      global=0
-      ;;
     -mm)
       mm=1
       ;;
     -rm)
-      rm=1
+      rmf=1
       grm=1
       if [ -n "$2" ]
       then
@@ -74,25 +61,6 @@ while [ $# -gt 0 ]; do
 	esac   	       
       fi
       ;;
-    -rb)
-       if [ -n "$2" ]
-       then
-         case "$2" in
-	   -*)
-	     echo "Error: -rb must be followed with a number"
-	     exit -1
-	     ;;
-	   [0-9]*)
-	     rb=$2
-	     shift
-	     ;;
-	   *)     
-	     echo "Error: -rb must be followed with a number"
-	     exit -1
-	     ;;
-	 esac  
-       fi
-       ;;
      -mb)   
        if [ -n "$2" ]
        then
@@ -113,11 +81,11 @@ while [ $# -gt 0 ]; do
        fi
        ;;
      -*)
-      echo "Unrecognized options for reg2img"
+      echo "Unrecognized options for pet2petatl"
       exit -1
       ;;  
      *)
-      refimg=$1
+      atlas=$1
       movimg=$2
       shift
       ;;  
@@ -125,13 +93,13 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-if [ -n "$refimg" ]
+if [ -n "$atlas" ]
 then
-    refdir=`dirname $refimg`
-    refname=`basename $refimg`
+    refdir=`dirname $atlas`
+    refname=`basename $atlas`
     refroot=${refname%%.*}
 else
-    echo "$program: Missing refimg"
+    echo "$program: Missing atlas"
     exit -1
 fi        
 if [ -n "$movimg" ]
@@ -146,20 +114,18 @@ fi
 
 echo refroot: $refroot
 echo movroot: $movroot
-echo rb=$rb
+
 echo mb=$mb
-echo rm=$rm
+echo rmf=$rmf
 echo mm=$mm
 
-imgblur_4dfp $refimg $rb
 imgblur_4dfp $movimg $mb
-rbx=`echo $rb | awk '{print 10*$1}'`
 mbx=`echo $mb | awk '{print 10*$1}'`
 
-if [ "$rm" -eq 1 ] && [ "$grm" -eq 1 ]
+if [ "$rmf" -eq 1 ] && [ "$grm" -eq 1 ]
 then
-    maskimg_4dfp ${refroot}"_b"${rbx} ${refroot}"_b"${rbx} -t.5 ${refroot}"_msk" -v1
-    nsl=`gawk '/matrix size \[3\]/ {print $NF}' ${refroot}".4dfp.ifh"`
+    maskimg_4dfp ${atlas} ${atlas} -t.5 ${refroot}"_msk" -v1
+    nsl=`gawk '/matrix size \[3\]/ {print $NF}' ${refdir}/${refroot}".4dfp.ifh"`
     msl=3
     zero_slice_4dfp ${refroot}"_msk" z 1 $msl  ${refroot}"_mskz"
     k=$((nsl-msl+1))
@@ -181,24 +147,9 @@ fi
 echo rmsk=$rmsk
 echo mmsk=$mmsk
  
-if [ "$cross" -eq 1 ] && [ "$global" -eq 1 ]
-then
-    modes=( 4099 2051 10243 )
-fi
-if [ "$cross" -eq 1 ] && [ "$global" -eq 0 ]
-then
-    modes=( 2051 10243 )
-fi
-if [ "$cross" -eq 0 ] && [ "$global" -eq 1 ]
-then
-    modes=( 4355 2307 10499 )
-fi
-if [ "$cross" -eq 0 ] && [ "$global" -eq 0 ]
-then
-    modes=( 2307 10499 )
-fi
 
-echo "modes="${modes[*]}
+modes=( 1283 1283 3335 2311 2311 )
+
 
 ###################################################################################################
 # COMPUTE REGISTRATIONS
@@ -222,18 +173,9 @@ then
 	t4_mul ${RELEASE}/${oristr[$ori]}"_t4" temp$$"_t4" $t4file1
 	rm temp$$_t4			
 fi
-if [ ! -e $t4file2 ]
-then
-	ori=`awk '/orientation/{print $NF - 1}' ${movdir}/${movroot}".4dfp.ifh"`
-	ori=$((ori-1))
-	t4_inv ${RELEASE}/${oristr[$ori]}"_t4" temp$$"_t4"
-	ori=`awk '/orientation/{print $NF - 1}' ${refdir}/${refroot}".4dfp.ifh"`
-	ori=$((ori-1))
-	t4_mul ${RELEASE}/${oristr[$ori]}"_t4" temp$$"_t4" $t4file2
-	rm temp$$_t4		
-fi
 
-refi=${refroot}"_b"$rbx
+
+refi=$atlas
 movi=${movroot}"_b"$mbx
 
 nm=${#modes[@]}
@@ -244,33 +186,6 @@ do
     echo imgreg_4dfp $refi $rmsk $movi $mmsk $t4file1 $mode
     echo imgreg_4dfp $refi $rmsk $movi $mmsk $t4file1 $mode >> $log
          imgreg_4dfp $refi $rmsk $movi $mmsk $t4file1 $mode >> $log
-    echo >> $log
-    echo imgreg_4dfp $movi $mmsk $refi $rmsk $t4file2 $mode
-    echo imgreg_4dfp $movi $mmsk $refi $rmsk $t4file2 $mode >> $log
-         imgreg_4dfp $movi $mmsk $refi $rmsk $t4file2 $mode >> $log    
 done
 
-##################################################################################################
-#Reconciliation: t4_resolve target t4 files and resolve log are created
-
-resolvelog=${refroot}"_"${movroot}"_"${program}"_resolve.log"
-echo t4_resolve ${refroot} ${movroot} -o${refroot}
-t4_resolve ${refroot} ${movroot} -o${refroot} > $resolvelog
-
-error=`gawk '/estimate total rotation error/{rot = $5} /estimate total translation error/{trans = $5} END{printf ("%3d", 100*(trans + 1.4*rot))}' $resolvelog`
-echo                           >> $resolvelog
-echo "ERROR = " $error
-echo "ERROR = " $error >> $resolvelog
-if (( $error < 100 )) 
-then
-	echo "ERROR is LOW, image reconciliation is good"
-	echo "ERROR is LOW, image reconciliation is good"             >> $resolvelog
-elif (( $error > 200 )) 
-then
-	echo "ERROR is HIGH, cross-image reconciliation is poor"
-	echo "ERROR is HIGH, cross-image reconciliation is poor"      >> $resolvelog
-else
-	echo "ERROR is MED, cross-image reconciliation is acceptable"
-	echo "ERROR is MED, cross-image reconciliation is acceptable" >> $resolvelog
-fi
 

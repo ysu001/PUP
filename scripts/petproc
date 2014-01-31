@@ -9,7 +9,7 @@
 ################################################################################
 # Yi Su, 01/08/2014
 
-idstr='$Id: petproc,v 1.1 2014/01/09 18:48:38 suy Exp $'
+idstr='$Id: petproc,v 1.0 Fri Jan 31 09:41:55 CST 2014 suy $'
 
 echo $idstr
 
@@ -120,7 +120,7 @@ fi
 ###############################################################################
 # Static Processing
 
-if [ "$suvr" -eq "1" ]
+if [ "$suvr" = "1" ]
 then
 	petmdlsum $paramsfn
 	petroiint $paramsfn
