@@ -8,7 +8,7 @@
 ################################################################################
 # Yi Su, 01/08/2014
 
-idstr='$Id: petrefroi,v 1.0 Fri Jan 31 09:40:28 CST 2014 suy $'
+idstr='$Id: petrefroi,v 1.1 Mon Feb  3 09:46:07 CST 2014 suy $'
 
 echo $idstr
 
@@ -44,6 +44,11 @@ then
 fi
 
 if (( tgflag == 1 ))
+then
+	fsrefroi $petid $roilist $refroistr .tac
+fi
+
+if (( tgflag == 2 ))
 then
 	fsrefroi $petid $roilist $refroistr .tac
 fi

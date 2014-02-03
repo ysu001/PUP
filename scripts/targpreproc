@@ -8,7 +8,7 @@
 ################################################################################
 # Yi Su, 01/08/2014
 
-idstr='$Id: targpreproc,v 1.0 Fri Jan 31 09:41:08 CST 2014 suy $'
+idstr='$Id: targpreproc,v 1.1 Mon Feb  3 09:46:36 CST 2014 suy $'
 
 echo $idstr
 
@@ -29,16 +29,29 @@ source $paramsfn
 # the inputs specified in the params file
 
 ###############################################################################
+
+# FREESURFER based processing. The preprocessing step converts freesurfer
+# files into 4dfp format, and prepares for ROI analysis.
 if (( FS == 1 ))
 then
 	fspreproc $paramsfn
 fi
 
+# PET ATLAS based processing. The preprocessing step populates PET atlas
+# template image and ROI definetion files in the PET atlas space and prepare
+# for ROI analysis.
 if (( tgflag == 1 ))
 then
 	petatlpreproc $paramsfn
 fi
 
+# MR ATLAS based processing. The preprocessing step converts MR images to 
+# 4dfp format and register it to atlas space. The ROIs are defined in the 
+# atlas space. It can be standard template ROIs or manually defined ROIs.
+if (( tgflag == 2 ))
+then
+	mratlpreproc $paramsfn
+fi
 ###############################################################################
 # Additional ROI target based processing is under development
 

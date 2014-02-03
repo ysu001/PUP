@@ -8,7 +8,7 @@
 ################################################################################
 # Yi Su, 01/08/2014
 
-idstr='$Id: petsuvrrep,v 1.0 Fri Jan 31 09:39:59 CST 2014 suy $'
+idstr='$Id: petsuvrrep,v 1.1 Mon Feb  3 09:46:28 CST 2014 suy $'
 
 echo $idstr
 
@@ -51,7 +51,10 @@ then
 	petatlsuvrsum $petid $roilist .suvr .txt
 fi
 
-
+if (( tgflag == 2 ))
+then
+	petatlsuvrsum $petid $roilist .suvr .txt
+fi
 ###############################################################################
 
 exit $?

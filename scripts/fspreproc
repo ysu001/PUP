@@ -22,11 +22,10 @@
 #	pvc2cflag: whether PVC2C will be performed			       #
 #									       #
 #									       #
-# The output of this program is a series of TAC curves			       #
 ################################################################################
 # Yi Su, 12/24/2013
 
-idstr='$Id: fspreproc,v 1.0 Fri Jan 31 09:39:46 CST 2014 suy $'
+idstr='$Id: fspreproc,v 1.1 Mon Feb  3 09:45:25 CST 2014 suy $'
 
 echo $idstr
 
@@ -66,12 +65,12 @@ then
 fi
 maskimg_4dfp -v1 -t15 ${mrroot}_g9  ${mrroot}_g9 Head_Mask
 PreprocessRSFtest2 $wmparcroot Head_Mask  $roiimg $rsflist $fslut
-if (( $rsfflag != 1 ))
+if (( rsfflag != 1 ))
 then
 	rsf2roilist $rsflist $fslut $roilist
 fi
 
-if (( $pvc2cflag == 1 ))
+if (( pvc2cflag == 1 ))
 then
 	fs2brain $wmparcroot
 fi

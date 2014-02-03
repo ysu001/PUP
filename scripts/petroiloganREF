@@ -20,7 +20,7 @@
 ################################################################################
 # Yi Su, 01/03/2014
 
-idstr='$Id: petroiloganREF,v 1.0 2014/01/03 18:07:48 suy Exp $'
+idstr='$Id: petroiloganREF,v 1.1 Mon Feb  3 09:46:15 CST 2014 suy $'
 
 echo $idstr
 
@@ -47,11 +47,11 @@ for (( i=1; i<=$NROI; i++ ))
 do
 	label=`gawk 'NR=='$i' {print $1}' $roilist`
 	loganREFROI ${petid}_REF.tac ${petid}_${label}.tac ${label} $k2 $sf $ef ${petid}_${label}.mdl
-	if (( $rsfflag == 1 ))
+	if (( rsfflag == 1 ))
 	then
 		loganREFROI ${petid}_REF_RSF.tac ${petid}_${label}_RSF.tac ${label} $k2 $sf $ef ${petid}_${label}_RSF.mdl
 	fi
-	if (( $pvc2cflag == 1 ))
+	if (( pvc2cflag == 1 ))
 	then
 		loganREFROI ${petid}_REF_PVC2C.tac ${petid}_${label}_PVC2C.tac ${label} $k2 $sf $ef ${petid}_${label}_PVC2C.mdl
 	fi

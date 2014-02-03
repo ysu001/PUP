@@ -8,7 +8,7 @@
 ################################################################################
 # Yi Su, 01/08/2014
 
-idstr='$Id: petloganrep,v 1.0 2014/01/08 18:07:48 suy Exp $'
+idstr='$Id: petloganrep,v 1.1 Mon Feb  3 09:45:58 CST 2014 suy $'
 
 echo $idstr
 
@@ -29,20 +29,29 @@ source $paramsfn
 # the inputs specified in the params file
 
 ###############################################################################
-if (( $FS == 1 ))
+if (( FS == 1 ))
 then
 	fslogansum $petid $roisfn .mdl .txt
-	if (( $rsfflag == 1 ))
+	if (( rsfflag == 1 ))
 	then
 		fslogansum $petid $roisfn _RSF.mdl _RSF.txt
 	fi
-	if (( $pvc2cflag == 1 ))
+	if (( pvc2cflag == 1 ))
 	then
 		fslogansum $petid $roisfn _PVC2C.mdl _PVC2C.txt
 	fi
 	
 fi
 
+if (( tgflag == 1 ))
+then
+	roilogansum $petid $roilist .mdl .txt
+fi
+
+if (( tgflag == 2 ))
+then
+	roilogansum $petid $roilist .mdl .txt
+fi
 ###############################################################################
 # Additional ROI target based processing will be included in the future
 

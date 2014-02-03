@@ -1,0 +1,66 @@
+#!/bin/bash
+################################################################################
+# Summarize ROI Based PET loganREF ROI analysis				       #
+#                                   				               #
+# USAGE:								       #
+#	roilogansum petid roisfn loganpostfix sumpostfix                        #
+#	petid:	petid is a string associated with the file name PET data in    #
+#               4dfp format.						       #
+#	roilist:	the text file that lists ROIs to be reported                   #
+#	loganpostfix: postfix for the mdl file, standard postfix is ".mdl", it #
+#		      could have extra strings, for example the postfix for an #
+#		      RSF corrected tac is "_RSF.mdl". The bp file for a     #
+#		      specific ROI and dataset would follow the naming	       #
+#		      convention: ${petid}_${ROINAME}${loganpostfix}	       #
+#	sumpostfix:  postfix for the output file, standard postfix is	       #
+#		     ".txt", it could have extra strings, for example the      #
+#		     postfix for an RSF corrected opt is "_RSF.txt". 	       #
+#		     The opt file follow the naming convention: 	       #
+#				${petid}_LOGAN${sumpostfix}		       #
+#									       #
+# The output of this program is a text file that summarizes the modeling       #
+# outputs								       #
+################################################################################
+# Yi Su, 01/08/2014
+
+idstr='$Id: roilogansum,v 1.1 Mon Feb  3 09:46:55 CST 2014 suy $'
+
+echo $idstr
+
+program=`basename $0`
+
+if [ $# -lt 4 ]
+then
+	echo "Usage: $program petid roilist loganpostfix sumpostfix"
+	exit -1
+fi
+petid=$1
+roilist=$2
+loganpostfix=$3
+sumpostfix=$4
+
+optfn=${petid}_LOGAN${sumpostfix}
+
+###############################################################################
+nline=`wc -l $roilist | gawk '{print $1}'`
+
+printf "%-35s %11s %11s %11s %11s\n" Structure_Name NVox BP R^2 Intc> $optfn
+
+for (( i=1; i<=$nline; i++ ))
+do
+	ROI=`gawk 'NR=='$i' {print $1}'  $roilist`
+	fn=${petid}_${ROI}${loganpostfix}
+	if [ -e $fn ]
+	then
+		nv=`gawk 'NR==3 {print $2}'  $fn`
+		bp=`gawk 'NR==3 {print $3}'  $fn`
+		rsq=`gawk 'NR==3 {print $4}'  $fn`
+		intc=`gawk 'NR==3 {print $5}'  $fn`
+	else
+		nv=0
+		bp=0
+		rsq=0
+		intc=0
+	fi
+	printf "%-35s %11d %11.4f %11.4f %11.4f\n" ${ROI} $nv $bp $rsq $intc >> $optfn
+done

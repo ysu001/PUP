@@ -1,0 +1,88 @@
+#!/bin/bash
+################################################################################
+# Preprocessing MR images for MR atlas based PET processing                    #
+#                                   				               #
+# USAGE:								       #
+#	mratlpreproc paramsfn                                                  #
+#                                                                              #
+# This script reads a params file that includes:                               #
+#	mrdir:	location of MR data					       #
+#	mrfn:	file name of the MR data (currently only support dicom)	       #
+#	mrid:	id name of the output 4dfp MR image			       #
+#	atlpath:location of atlas target files				       #
+#	atltarg:target name of the atlas (i.e. CAPIIO etc)		       #
+#	roidir:	location of atlas space ROI definetion files		       #
+#       roiimg: the root name of the image file that defines the ROIs.         #
+#	roilist:the text file that lists ROI names and corresponding roi label #
+#               in the roiimg file, it only include brain regions for regional #
+#		analysis.			                               #
+#									       #
+#									       #
+################################################################################
+# Yi Su, 01/31/2014
+
+idstr='$Id: mratlpreproc,v 1.1 Mon Feb  3 09:46:46 CST 2014 suy $'
+
+echo $idstr
+
+program=`basename $0`
+
+if [ $# -lt 1 ]
+then
+	echo "Usage: $program paramsfn"
+	exit -1
+fi
+
+paramsfn=$1
+###############################################################################
+# Read PARAMS file
+source $paramsfn
+
+# Further development will improve this program which checks the validity of
+# the inputs specified in the params file
+
+###############################################################################
+# Populate files
+
+dcm_to_4dfp -b ${mrid}S $mrdir/$mrfn
+
+# The MR is typically MPRAGE data acquired sagitally, will convert to
+# transverse first.
+ori=`gawk '/orientation/{print $NF}' ${mrid}S.4dfp.ifh`
+if (( ori == 2 ))
+then
+	ext=( img img.rec ifh hdr )
+	for (( i=0; i<4; i++ ))
+	do
+		cp ${mrid}S.4dfp.${ext[$i]} ${mrid}.4dfp.${ext[$i]}
+	done
+elif (( ori == 3 ))
+then
+	C2T_4dfp ${mrid}S ${mrid}
+elif (( ori == 4 ))
+then
+	S2T_4dfp ${mrid}S ${mrid}
+else
+	echo "ERROR mratlpreproc: Wrong Orientation FLAG"
+	exit -1
+fi
+rm ${mrid}S.4dfp.*
+
+cp $roidir/${roiimg}.4dfp.* .
+cp $roidir/${roilist} .
+
+###############################################################################
+# atlas registration
+mpr2atl_4dfp $mrid -T/$atlpath/$atltarg
+
+# generate brainmask
+msktgen_4dfp $mrid -T/$atlpath/$atltarg
+
+# populate maskfile parameter in the params file for further processing
+echo "maskfile=${mrid}_mskt.4dfp.img" >> $paramsfn
+
+# set atlt4 in params file
+echo "atlt4=${mrid}_to_${atltarg}_t4" >> $paramsfn
+
+# set refimg in params file
+echo "refimg=${mrid}" >> $paramsfn
