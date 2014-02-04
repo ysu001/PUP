@@ -1,0 +1,281 @@
+#!/bin/bash
+################################################################################
+# Jon's manual PET ROI analysis postprocessing				       #
+#                                                                              #
+# USAGE:								       #
+#	manroipostproc paramsfn                                                #
+#                                                                              #
+# This script performs post analysis test file processing to generate final    #
+# outputs for CNDA				                               #
+################################################################################
+# Yi Su, 02/03/2014
+
+idstr='$Id: manroipostproc,v 1.0 Fri Jan 31 09:41:55 CST 2014 suy $'
+
+echo $idstr
+
+program=`basename $0`
+
+if [ $# -lt 1 ]
+then
+	echo "Usage: $program paramsfn"
+	exit -1
+fi
+
+paramsfn=$1
+
+###############################################################################
+# Read PARAMS file
+source $paramsfn
+
+# Further development will improve this program to check the validity of
+# the inputs specified in the params file
+
+optid=${petid%%_*}
+
+# processing LOGAN analysis result
+loganinfn=${optid}_LOGAN.txt
+loganoutfn=${optid}_LOGAN_cnda.txt
+if [ -e ${loganinfn} ]
+then
+	head -1 ${loganinfn} > ${loganoutfn}
+	grep brainstem ${loganinfn} >> ${loganoutfn}
+	
+	# caudate
+	lnv=`gawk '/left-caudate/{print $2}' ${loganinfn}`
+	lbp=`gawk '/left-caudate/{print $3}' ${loganinfn}`
+	lrsq=`gawk '/left-caudate/{print $4}' ${loganinfn}`
+	lintc=`gawk '/left-caudate/{print $5}' ${loganinfn}`
+	rnv=`gawk '/right-caudate/{print $2}' ${loganinfn}`
+	rbp=`gawk '/right-caudate/{print $3}' ${loganinfn}`
+	rrsq=`gawk '/right-caudate/{print $4}' ${loganinfn}`
+	rintc=`gawk '/right-caudate/{print $5}' ${loganinfn}`
+	(( nv=lnv+rnv ))
+	bp=$(echo "scale=6; ($lbp*$lnv+$rnv*$rbp)/$nv" |bc)
+	rsq=$(echo "scale=6; ($lrsq*$lnv+$rrsq*$rnv)/$nv" |bc)
+	intc=$(echo "scale=6; ($lintc*$lnv+$rintc*$rnv)/$nv" |bc)
+	printf "%-35s %11d %11.4f %11.4f %11.4f\n" caudate $nv $bp $rsq $intc >> $loganoutfn
+
+	# cerebellum
+	lnv=`gawk '/left-cerebellum/{print $2}' ${loganinfn}`
+	lbp=`gawk '/left-cerebellum/{print $3}' ${loganinfn}`
+	lrsq=`gawk '/left-cerebellum/{print $4}' ${loganinfn}`
+	lintc=`gawk '/left-cerebellum/{print $5}' ${loganinfn}`
+	rnv=`gawk '/right-cerebellum/{print $2}' ${loganinfn}`
+	rbp=`gawk '/right-cerebellum/{print $3}' ${loganinfn}`
+	rrsq=`gawk '/right-cerebellum/{print $4}' ${loganinfn}`
+	rintc=`gawk '/right-cerebellum/{print $5}' ${loganinfn}`
+	(( nv=lnv+rnv ))
+	rsq=$(echo "scale=6; ($lrsq*$lnv+$rrsq*$rnv)/$nv" |bc)
+	intc=$(echo "scale=6; ($lintc*$lnv+$rintc*$rnv)/$nv" |bc)
+	printf "%-35s %11d %11.4f %11.4f %11.4f\n" cerebellum $nv 0.000 $rsq $intc >> $loganoutfn
+
+	# gyrusrectus (MCBP region)
+	lnv=`gawk '/left-gyrusrectus/{print $2}' ${loganinfn}`
+	lbp=`gawk '/left-gyrusrectus/{print $3}' ${loganinfn}`
+	lrsq=`gawk '/left-gyrusrectus/{print $4}' ${loganinfn}`
+	lintc=`gawk '/left-gyrusrectus/{print $5}' ${loganinfn}`
+	rnv=`gawk '/right-gyrusrectus/{print $2}' ${loganinfn}`
+	rbp=`gawk '/right-gyrusrectus/{print $3}' ${loganinfn}`
+	rrsq=`gawk '/right-gyrusrectus/{print $4}' ${loganinfn}`
+	rintc=`gawk '/right-gyrusrectus/{print $5}' ${loganinfn}`
+	(( nv=lnv+rnv ))
+	bp=$(echo "scale=6; ($lbp*$lnv+$rnv*$rbp)/$nv" |bc)
+	rsq=$(echo "scale=6; ($lrsq*$lnv+$rrsq*$rnv)/$nv" |bc)
+	intc=$(echo "scale=6; ($lintc*$lnv+$rintc*$rnv)/$nv" |bc)
+	printf "%-35s %11d %11.4f %11.4f %11.4f\n" gyrusrectus $nv $bp $rsq $intc >> $loganoutfn
+	gyrusrectus=$bp
+	
+	# lattemp (MCBP region)
+	lnv=`gawk '/left-lattemp/{print $2}' ${loganinfn}`
+	lbp=`gawk '/left-lattemp/{print $3}' ${loganinfn}`
+	lrsq=`gawk '/left-lattemp/{print $4}' ${loganinfn}`
+	lintc=`gawk '/left-lattemp/{print $5}' ${loganinfn}`
+	rnv=`gawk '/right-lattemp/{print $2}' ${loganinfn}`
+	rbp=`gawk '/right-lattemp/{print $3}' ${loganinfn}`
+	rrsq=`gawk '/right-lattemp/{print $4}' ${loganinfn}`
+	rintc=`gawk '/right-lattemp/{print $5}' ${loganinfn}`
+	(( nv=lnv+rnv ))
+	bp=$(echo "scale=6; ($lbp*$lnv+$rnv*$rbp)/$nv" |bc)
+	rsq=$(echo "scale=6; ($lrsq*$lnv+$rrsq*$rnv)/$nv" |bc)
+	intc=$(echo "scale=6; ($lintc*$lnv+$rintc*$rnv)/$nv" |bc)
+	printf "%-35s %11d %11.4f %11.4f %11.4f\n" lattemp $nv $bp $rsq $intc >> $loganoutfn
+	lattemp=$bp
+
+	# occipital
+	lnv=`gawk '/left-occipital/{print $2}' ${loganinfn}`
+	lbp=`gawk '/left-occipital/{print $3}' ${loganinfn}`
+	lrsq=`gawk '/left-occipital/{print $4}' ${loganinfn}`
+	lintc=`gawk '/left-occipital/{print $5}' ${loganinfn}`
+	rnv=`gawk '/right-occipital/{print $2}' ${loganinfn}`
+	rbp=`gawk '/right-occipital/{print $3}' ${loganinfn}`
+	rrsq=`gawk '/right-occipital/{print $4}' ${loganinfn}`
+	rintc=`gawk '/right-occipital/{print $5}' ${loganinfn}`
+	(( nv=lnv+rnv ))
+	bp=$(echo "scale=6; ($lbp*$lnv+$rnv*$rbp)/$nv" |bc)
+	rsq=$(echo "scale=6; ($lrsq*$lnv+$rrsq*$rnv)/$nv" |bc)
+	intc=$(echo "scale=6; ($lintc*$lnv+$rintc*$rnv)/$nv" |bc)
+	printf "%-35s %11d %11.4f %11.4f %11.4f\n" occipital $nv $bp $rsq $intc >> $loganoutfn
+
+	# parietal
+	lnv=`gawk '/left-parietal/{print $2}' ${loganinfn}`
+	lbp=`gawk '/left-parietal/{print $3}' ${loganinfn}`
+	lrsq=`gawk '/left-parietal/{print $4}' ${loganinfn}`
+	lintc=`gawk '/left-parietal/{print $5}' ${loganinfn}`
+	rnv=`gawk '/right-parietal/{print $2}' ${loganinfn}`
+	rbp=`gawk '/right-parietal/{print $3}' ${loganinfn}`
+	rrsq=`gawk '/right-parietal/{print $4}' ${loganinfn}`
+	rintc=`gawk '/right-parietal/{print $5}' ${loganinfn}`
+	(( nv=lnv+rnv ))
+	bp=$(echo "scale=6; ($lbp*$lnv+$rnv*$rbp)/$nv" |bc)
+	rsq=$(echo "scale=6; ($lrsq*$lnv+$rrsq*$rnv)/$nv" |bc)
+	intc=$(echo "scale=6; ($lintc*$lnv+$rintc*$rnv)/$nv" |bc)
+	printf "%-35s %11d %11.4f %11.4f %11.4f\n" parietal $nv $bp $rsq $intc >> $loganoutfn
+
+	# precuneus (MCBP region)
+	lnv=`gawk '/left-precuneus/{print $2}' ${loganinfn}`
+	lbp=`gawk '/left-precuneus/{print $3}' ${loganinfn}`
+	lrsq=`gawk '/left-precuneus/{print $4}' ${loganinfn}`
+	lintc=`gawk '/left-precuneus/{print $5}' ${loganinfn}`
+	rnv=`gawk '/right-precuneus/{print $2}' ${loganinfn}`
+	rbp=`gawk '/right-precuneus/{print $3}' ${loganinfn}`
+	rrsq=`gawk '/right-precuneus/{print $4}' ${loganinfn}`
+	rintc=`gawk '/right-precuneus/{print $5}' ${loganinfn}`
+	(( nv=lnv+rnv ))
+	bp=$(echo "scale=6; ($lbp*$lnv+$rnv*$rbp)/$nv" |bc)
+	rsq=$(echo "scale=6; ($lrsq*$lnv+$rrsq*$rnv)/$nv" |bc)
+	intc=$(echo "scale=6; ($lintc*$lnv+$rintc*$rnv)/$nv" |bc)
+	printf "%-35s %11d %11.4f %11.4f %11.4f\n" precuneus $nv $bp $rsq $intc >> $loganoutfn
+	precuneus=$bp
+
+	# prefrontal (MCBP region)
+	lnv=`gawk '/left-prefrontal/{print $2}' ${loganinfn}`
+	lbp=`gawk '/left-prefrontal/{print $3}' ${loganinfn}`
+	lrsq=`gawk '/left-prefrontal/{print $4}' ${loganinfn}`
+	lintc=`gawk '/left-prefrontal/{print $5}' ${loganinfn}`
+	rnv=`gawk '/right-prefrontal/{print $2}' ${loganinfn}`
+	rbp=`gawk '/right-prefrontal/{print $3}' ${loganinfn}`
+	rrsq=`gawk '/right-prefrontal/{print $4}' ${loganinfn}`
+	rintc=`gawk '/right-prefrontal/{print $5}' ${loganinfn}`
+	(( nv=lnv+rnv ))
+	bp=$(echo "scale=6; ($lbp*$lnv+$rnv*$rbp)/$nv" |bc)
+	rsq=$(echo "scale=6; ($lrsq*$lnv+$rrsq*$rnv)/$nv" |bc)
+	intc=$(echo "scale=6; ($lintc*$lnv+$rintc*$rnv)/$nv" |bc)
+	printf "%-35s %11d %11.4f %11.4f %11.4f\n" prefrontal $nv $bp $rsq $intc >> $loganoutfn
+	prefrontal=$bp
+
+	# rostral
+	lnv=`gawk '/left-rostral/{print $2}' ${loganinfn}`
+	lbp=`gawk '/left-rostral/{print $3}' ${loganinfn}`
+	lrsq=`gawk '/left-rostral/{print $4}' ${loganinfn}`
+	lintc=`gawk '/left-rostral/{print $5}' ${loganinfn}`
+	rnv=`gawk '/right-rostral/{print $2}' ${loganinfn}`
+	rbp=`gawk '/right-rostral/{print $3}' ${loganinfn}`
+	rrsq=`gawk '/right-rostral/{print $4}' ${loganinfn}`
+	rintc=`gawk '/right-rostral/{print $5}' ${loganinfn}`
+	(( nv=lnv+rnv ))
+	bp=$(echo "scale=6; ($lbp*$lnv+$rnv*$rbp)/$nv" |bc)
+	rsq=$(echo "scale=6; ($lrsq*$lnv+$rrsq*$rnv)/$nv" |bc)
+	intc=$(echo "scale=6; ($lintc*$lnv+$rintc*$rnv)/$nv" |bc)
+	printf "%-35s %11d %11.4f %11.4f %11.4f\n" rostral $nv $bp $rsq $intc >> $loganoutfn
+	
+	mcbp=$(echo "scale=6; ($gyrusrectus+$lattemp+$precuneus+$prefrontal)/4." |bc)
+	printf "%-35s %11d %11.4f %11.4f %11.4f\n" MCBP 0 $mcbp 0.0 0.0 >> $loganoutfn
+fi
+
+# processing SUVR analysis result
+suvrinfn=${optid}_msum_SUVR.txt
+suvroutfn=${optid}_msum_SUVR_cnda.txt
+if [ -e ${suvrinfn} ]
+then
+	head -1 ${suvrinfn} > ${suvroutfn}
+	grep brainstem ${suvrinfn} >> ${suvroutfn}
+	
+	# caudate
+	lnv=`gawk '/left-caudate/{print $2}' ${suvrinfn}`
+	lsuvr=`gawk '/left-caudate/{print $3}' ${suvrinfn}`
+	rnv=`gawk '/right-caudate/{print $2}' ${suvrinfn}`
+	rsuvr=`gawk '/right-caudate/{print $3}' ${suvrinfn}`
+	(( nv=lnv+rnv ))
+	suvr=$(echo "scale=6; ($lsuvr*$lnv+$rsuvr*$rnv)/$nv" |bc)
+	printf "%-35s %11d %11.4f\n" caudate $nv $suvr >> $suvroutfn
+
+	# cerebellum
+	lnv=`gawk '/left-cerebellum/{print $2}' ${suvrinfn}`
+	lsuvr=`gawk '/left-cerebellum/{print $3}' ${suvrinfn}`
+	rnv=`gawk '/right-cerebellum/{print $2}' ${suvrinfn}`
+	rsuvr=`gawk '/right-cerebellum/{print $3}' ${suvrinfn}`
+	(( nv=lnv+rnv ))
+	printf "%-35s %11d %11.4f\n" cerebellum $nv 1.000 >> $suvroutfn
+
+	# gyrusrectus (MCBP region)
+	lnv=`gawk '/left-gyrusrectus/{print $2}' ${suvrinfn}`
+	lsuvr=`gawk '/left-gyrusrectus/{print $3}' ${suvrinfn}`
+	rnv=`gawk '/right-gyrusrectus/{print $2}' ${suvrinfn}`
+	rsuvr=`gawk '/right-gyrusrectus/{print $3}' ${suvrinfn}`
+	(( nv=lnv+rnv ))
+	suvr=$(echo "scale=6; ($lsuvr*$lnv+$rsuvr*$rnv)/$nv" |bc)
+	printf "%-35s %11d %11.4f\n" gyrusrectus $nv $suvr >> $suvroutfn
+	gyrusrectus=$suvr
+	
+	# lattemp (MCBP region)
+	lnv=`gawk '/left-lattemp/{print $2}' ${suvrinfn}`
+	lsuvr=`gawk '/left-lattemp/{print $3}' ${suvrinfn}`
+	rnv=`gawk '/right-lattemp/{print $2}' ${suvrinfn}`
+	rsuvr=`gawk '/right-lattemp/{print $3}' ${suvrinfn}`
+	(( nv=lnv+rnv ))
+	suvr=$(echo "scale=6; ($lsuvr*$lnv+$rsuvr*$rnv)/$nv" |bc)
+	printf "%-35s %11d %11.4f\n" lattemp $nv $suvr >> $suvroutfn
+	lattemp=$suvr
+
+	# occipital
+	lnv=`gawk '/left-occipital/{print $2}' ${suvrinfn}`
+	lsuvr=`gawk '/left-occipital/{print $3}' ${suvrinfn}`
+	rnv=`gawk '/right-occipital/{print $2}' ${suvrinfn}`
+	rsuvr=`gawk '/right-occipital/{print $3}' ${suvrinfn}`
+	(( nv=lnv+rnv ))
+	suvr=$(echo "scale=6; ($lsuvr*$lnv+$rsuvr*$rnv)/$nv" |bc)
+	printf "%-35s %11d %11.4f\n" occipital $nv $suvr >> $suvroutfn
+
+	# parietal
+	lnv=`gawk '/left-parietal/{print $2}' ${suvrinfn}`
+	lsuvr=`gawk '/left-parietal/{print $3}' ${suvrinfn}`
+	rnv=`gawk '/right-parietal/{print $2}' ${suvrinfn}`
+	rsuvr=`gawk '/right-parietal/{print $3}' ${suvrinfn}`
+	(( nv=lnv+rnv ))
+	suvr=$(echo "scale=6; ($lsuvr*$lnv+$rsuvr*$rnv)/$nv" |bc)
+	printf "%-35s %11d %11.4f \n" parietal $nv $suvr >> $suvroutfn
+
+	# precuneus (MCBP region)
+	lnv=`gawk '/left-precuneus/{print $2}' ${suvrinfn}`
+	lsuvr=`gawk '/left-precuneus/{print $3}' ${suvrinfn}`
+	rnv=`gawk '/right-precuneus/{print $2}' ${suvrinfn}`
+	rsuvr=`gawk '/right-precuneus/{print $3}' ${suvrinfn}`
+	(( nv=lnv+rnv ))
+	suvr=$(echo "scale=6; ($lsuvr*$lnv+$rsuvr*$rnv)/$nv" |bc)
+	printf "%-35s %11d %11.4f\n" precuneus $nv $suvr >> $suvroutfn
+	precuneus=$suvr
+
+	# prefrontal (MCBP region)
+	lnv=`gawk '/left-prefrontal/{print $2}' ${suvrinfn}`
+	lsuvr=`gawk '/left-prefrontal/{print $3}' ${suvrinfn}`
+	rnv=`gawk '/right-prefrontal/{print $2}' ${suvrinfn}`
+	rsuvr=`gawk '/right-prefrontal/{print $3}' ${suvrinfn}`
+	(( nv=lnv+rnv ))
+	suvr=$(echo "scale=6; ($lsuvr*$lnv+$rsuvr*$rnv)/$nv" |bc)
+	printf "%-35s %11d %11.4f\n" prefrontal $nv $suvr >> $suvroutfn
+	prefrontal=$suvr
+
+	# rostral
+	lnv=`gawk '/left-rostral/{print $2}' ${suvrinfn}`
+	lsuvr=`gawk '/left-rostral/{print $3}' ${suvrinfn}`
+	rnv=`gawk '/right-rostral/{print $2}' ${suvrinfn}`
+	rsuvr=`gawk '/right-rostral/{print $3}' ${suvrinfn}`
+	(( nv=lnv+rnv ))
+	suvr=$(echo "scale=6; ($lsuvr*$lnv+$rsuvr*$rnv)/$nv" |bc)
+	printf "%-35s %11d %11.4f\n" rostral $nv $suvr >> $suvroutfn
+	
+	mcsuvr=$(echo "scale=6; ($gyrusrectus+$lattemp+$precuneus+$prefrontal)/4." |bc)
+	printf "%-35s %11d %11.4f\n" MCSUVR 0 $mcsuvr >> $suvroutfn
+fi
+

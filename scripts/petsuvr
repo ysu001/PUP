@@ -60,10 +60,11 @@ done
 
 ref=`gawk 'NR==2 {print $4}' ${petid}_REF.tac`
 scf=$(echo "scale=8; 1/$ref" | bc)
+
 ext=( img img.rec ifh hdr )
 for (( i=0; i<4; i++ ))
 do
-	cp ${petid}.4dfp.${ext[$i]} ${petid}_SUVR.4dfp.${ext[$i]}
+	cp ${petid}_on_roi.4dfp.${ext[$i]} ${petid}_SUVR.4dfp.${ext[$i]}
 done
 scale_4dfp ${petid}_SUVR $scf
 gauss_4dfp ${petid}_SUVR 0.8
