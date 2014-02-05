@@ -1,0 +1,16 @@
+Frontal_medial_orbital	1	1246
+Anterior_cingulate	2	262
+Posterior_cingulate	3	186
+Temporal	4	4171
+Parietal	5	1676
+Precuneus	6	312
+Entire_cerebellum	7	15878
+Occipital	8	5216
+Pons	9	1226
+Left_Caudate	10	970
+Right_Caudate	11	988
+Left_anterior_putamen	12	404
+Right_anterior_putamen	13	429
+Left_posterior_putamen	14	539
+Right_posterior_putamen	15	536
+Centrum_Semiovale	16	3610

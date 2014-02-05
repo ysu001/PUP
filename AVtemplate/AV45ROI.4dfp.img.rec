@@ -1,0 +1,215 @@
+rec AV45ROI.4dfp.img  Wed Jan 29 11:33:30 2014  suy@bruckner Linux 2.6.32-279.9.1.el6.x86_64 x86_64
+	imgopr_4dfp	\
+	-xAV45ROI	\
+	frontal_medial_orbital	\
+	anterior_cingulate	\
+	posterior_cingulate	\
+	temporal.4dfp	\
+	parietal	\
+	precuneus	\
+	cerebellum_all	\
+	occipital	\
+	pons	\
+	left_caudate	\
+	right_caudate	\
+	left_anterior_putamen	\
+	right_anterior_putamen	\
+	left_post_putamen	\
+	right_post_putamen	\
+	centrum_semiovale
+$Id: imgopr_4dfp.c,v 1.14 2010/12/23 02:43:21 avi Exp $
+littleendian
+rec frontal_medial_orbital.4dfp.img  Wed Jan 29 10:56:11 2014  suy@bruckner Linux 2.6.32-279.9.1.el6.x86_64 x86_64
+maskimg_4dfp xlaal_frontal_med_orb xlaal_frontal_med_orb frontal_medial_orbital -v1 
+$Id: maskimg_4dfp.c,v 1.17 2012/06/27 22:33:19 avi Exp $
+littleendian
+xlaal_frontal_med_orb threshold=0.000000
+rec xlaal_frontal_med_orb.4dfp.img  Fri Jul  5 12:49:17 2013  suy@bruckner Linux 2.6.32-279.9.1.el6.x86_64 x86_64
+analyzeto4dfp xlaal_frontal_med_orb 
+$Id: analyzeto4dfp.c,v 1.20 2009/03/18 04:00:25 avi Exp $
+littleendian
+xlaal_frontal_med_orb.img.rec not found
+endrec Fri Jul  5 12:49:17 2013  suy
+endrec Wed Jan 29 10:56:11 2014  suy
+rec anterior_cingulate.4dfp.img  Wed Jan 29 10:57:05 2014  suy@bruckner Linux 2.6.32-279.9.1.el6.x86_64 x86_64
+maskimg_4dfp lanterior_cingulate_2 lanterior_cingulate_2 anterior_cingulate -v2 
+$Id: maskimg_4dfp.c,v 1.17 2012/06/27 22:33:19 avi Exp $
+littleendian
+lanterior_cingulate_2 threshold=0.000000
+rec lanterior_cingulate_2.4dfp.img  Fri Jul  5 12:46:32 2013  suy@bruckner Linux 2.6.32-279.9.1.el6.x86_64 x86_64
+analyzeto4dfp lanterior_cingulate_2 
+$Id: analyzeto4dfp.c,v 1.20 2009/03/18 04:00:25 avi Exp $
+littleendian
+lanterior_cingulate_2.img.rec not found
+endrec Fri Jul  5 12:46:32 2013  suy
+endrec Wed Jan 29 10:57:05 2014  suy
+rec posterior_cingulate.4dfp.img  Wed Jan 29 10:58:10 2014  suy@bruckner Linux 2.6.32-279.9.1.el6.x86_64 x86_64
+maskimg_4dfp llposterior_cingulate_2 llposterior_cingulate_2 posterior_cingulate -v3 
+$Id: maskimg_4dfp.c,v 1.17 2012/06/27 22:33:19 avi Exp $
+littleendian
+llposterior_cingulate_2 threshold=0.000000
+rec llposterior_cingulate_2.4dfp.img  Fri Jul  5 12:46:51 2013  suy@bruckner Linux 2.6.32-279.9.1.el6.x86_64 x86_64
+analyzeto4dfp llposterior_cingulate_2 
+$Id: analyzeto4dfp.c,v 1.20 2009/03/18 04:00:25 avi Exp $
+littleendian
+llposterior_cingulate_2.img.rec not found
+endrec Fri Jul  5 12:46:51 2013  suy
+endrec Wed Jan 29 10:58:10 2014  suy
+rec temporal.4dfp.img  Wed Jan 29 10:59:10 2014  suy@bruckner Linux 2.6.32-279.9.1.el6.x86_64 x86_64
+maskimg_4dfp new_temporal_2 new_temporal_2 temporal -v4 
+$Id: maskimg_4dfp.c,v 1.17 2012/06/27 22:33:19 avi Exp $
+littleendian
+new_temporal_2 threshold=0.000000
+rec new_temporal_2.4dfp.img  Fri Jul  5 12:49:02 2013  suy@bruckner Linux 2.6.32-279.9.1.el6.x86_64 x86_64
+analyzeto4dfp new_temporal_2 
+$Id: analyzeto4dfp.c,v 1.20 2009/03/18 04:00:25 avi Exp $
+littleendian
+new_temporal_2.img.rec not found
+endrec Fri Jul  5 12:49:02 2013  suy
+endrec Wed Jan 29 10:59:10 2014  suy
+rec parietal.4dfp.img  Wed Jan 29 10:59:43 2014  suy@bruckner Linux 2.6.32-279.9.1.el6.x86_64 x86_64
+maskimg_4dfp lnew_parietal lnew_parietal parietal -v5 
+$Id: maskimg_4dfp.c,v 1.17 2012/06/27 22:33:19 avi Exp $
+littleendian
+lnew_parietal threshold=0.000000
+rec lnew_parietal.4dfp.img  Fri Jul  5 12:47:00 2013  suy@bruckner Linux 2.6.32-279.9.1.el6.x86_64 x86_64
+analyzeto4dfp lnew_parietal 
+$Id: analyzeto4dfp.c,v 1.20 2009/03/18 04:00:25 avi Exp $
+littleendian
+lnew_parietal.img.rec not found
+endrec Fri Jul  5 12:47:00 2013  suy
+endrec Wed Jan 29 10:59:43 2014  suy
+rec precuneus.4dfp.img  Wed Jan 29 11:00:21 2014  suy@bruckner Linux 2.6.32-279.9.1.el6.x86_64 x86_64
+maskimg_4dfp lprecuneus_gm lprecuneus_gm precuneus -v6 
+$Id: maskimg_4dfp.c,v 1.17 2012/06/27 22:33:19 avi Exp $
+littleendian
+lprecuneus_gm threshold=0.000000
+rec lprecuneus_gm.4dfp.img  Fri Jul  5 12:47:22 2013  suy@bruckner Linux 2.6.32-279.9.1.el6.x86_64 x86_64
+analyzeto4dfp lprecuneus_gm 
+$Id: analyzeto4dfp.c,v 1.20 2009/03/18 04:00:25 avi Exp $
+littleendian
+lprecuneus_gm.img.rec not found
+endrec Fri Jul  5 12:47:22 2013  suy
+endrec Wed Jan 29 11:00:21 2014  suy
+rec cerebellum_all.4dfp.img  Wed Jan 29 11:01:03 2014  suy@bruckner Linux 2.6.32-279.9.1.el6.x86_64 x86_64
+maskimg_4dfp blcere_all blcere_all cerebellum_all -v7 
+$Id: maskimg_4dfp.c,v 1.17 2012/06/27 22:33:19 avi Exp $
+littleendian
+blcere_all threshold=0.000000
+rec blcere_all.4dfp.img  Fri Jul  5 12:45:51 2013  suy@bruckner Linux 2.6.32-279.9.1.el6.x86_64 x86_64
+analyzeto4dfp blcere_all 
+$Id: analyzeto4dfp.c,v 1.20 2009/03/18 04:00:25 avi Exp $
+littleendian
+blcere_all.img.rec not found
+endrec Fri Jul  5 12:45:51 2013  suy
+endrec Wed Jan 29 11:01:03 2014  suy
+rec occipital.4dfp.img  Wed Jan 29 11:01:48 2014  suy@bruckner Linux 2.6.32-279.9.1.el6.x86_64 x86_64
+maskimg_4dfp xxoccipital_gm xxoccipital_gm occipital -v8 
+$Id: maskimg_4dfp.c,v 1.17 2012/06/27 22:33:19 avi Exp $
+littleendian
+xxoccipital_gm threshold=0.000000
+rec xxoccipital_gm.4dfp.img  Fri Jul  5 12:50:44 2013  suy@bruckner Linux 2.6.32-279.9.1.el6.x86_64 x86_64
+analyzeto4dfp xxoccipital_gm 
+$Id: analyzeto4dfp.c,v 1.20 2009/03/18 04:00:25 avi Exp $
+littleendian
+xxoccipital_gm.img.rec not found
+endrec Fri Jul  5 12:50:44 2013  suy
+endrec Wed Jan 29 11:01:48 2014  suy
+rec pons.4dfp.img  Wed Jan 29 11:02:06 2014  suy@bruckner Linux 2.6.32-279.9.1.el6.x86_64 x86_64
+maskimg_4dfp lpons lpons pons -v9 
+$Id: maskimg_4dfp.c,v 1.17 2012/06/27 22:33:19 avi Exp $
+littleendian
+lpons threshold=0.000000
+rec lpons.4dfp.img  Fri Jul  5 12:47:11 2013  suy@bruckner Linux 2.6.32-279.9.1.el6.x86_64 x86_64
+analyzeto4dfp lpons 
+$Id: analyzeto4dfp.c,v 1.20 2009/03/18 04:00:25 avi Exp $
+littleendian
+lpons.img.rec not found
+endrec Fri Jul  5 12:47:11 2013  suy
+endrec Wed Jan 29 11:02:06 2014  suy
+rec left_caudate.4dfp.img  Wed Jan 29 11:02:30 2014  suy@bruckner Linux 2.6.32-279.9.1.el6.x86_64 x86_64
+maskimg_4dfp xleftcaudate xleftcaudate left_caudate -v10 
+$Id: maskimg_4dfp.c,v 1.17 2012/06/27 22:33:19 avi Exp $
+littleendian
+xleftcaudate threshold=0.000000
+rec xleftcaudate.4dfp.img  Fri Jul  5 12:50:02 2013  suy@bruckner Linux 2.6.32-279.9.1.el6.x86_64 x86_64
+analyzeto4dfp xleftcaudate 
+$Id: analyzeto4dfp.c,v 1.20 2009/03/18 04:00:25 avi Exp $
+littleendian
+xleftcaudate.img.rec not found
+endrec Fri Jul  5 12:50:02 2013  suy
+endrec Wed Jan 29 11:02:30 2014  suy
+rec right_caudate.4dfp.img  Wed Jan 29 11:02:47 2014  suy@bruckner Linux 2.6.32-279.9.1.el6.x86_64 x86_64
+maskimg_4dfp xrightcaudate xrightcaudate right_caudate -v11 
+$Id: maskimg_4dfp.c,v 1.17 2012/06/27 22:33:19 avi Exp $
+littleendian
+xrightcaudate threshold=0.000000
+rec xrightcaudate.4dfp.img  Fri Jul  5 12:50:27 2013  suy@bruckner Linux 2.6.32-279.9.1.el6.x86_64 x86_64
+analyzeto4dfp xrightcaudate 
+$Id: analyzeto4dfp.c,v 1.20 2009/03/18 04:00:25 avi Exp $
+littleendian
+xrightcaudate.img.rec not found
+endrec Fri Jul  5 12:50:27 2013  suy
+endrec Wed Jan 29 11:02:47 2014  suy
+rec left_anterior_putamen.4dfp.img  Wed Jan 29 11:03:47 2014  suy@bruckner Linux 2.6.32-279.9.1.el6.x86_64 x86_64
+maskimg_4dfp xleft_ant_putamen_av133 xleft_ant_putamen_av133 left_anterior_putamen -v12 
+$Id: maskimg_4dfp.c,v 1.17 2012/06/27 22:33:19 avi Exp $
+littleendian
+xleft_ant_putamen_av133 threshold=0.000000
+rec xleft_ant_putamen_av133.4dfp.img  Fri Jul  5 12:49:50 2013  suy@bruckner Linux 2.6.32-279.9.1.el6.x86_64 x86_64
+analyzeto4dfp xleft_ant_putamen_av133 
+$Id: analyzeto4dfp.c,v 1.20 2009/03/18 04:00:25 avi Exp $
+littleendian
+xleft_ant_putamen_av133.img.rec not found
+endrec Fri Jul  5 12:49:50 2013  suy
+endrec Wed Jan 29 11:03:48 2014  suy
+rec right_anterior_putamen.4dfp.img  Wed Jan 29 11:04:43 2014  suy@bruckner Linux 2.6.32-279.9.1.el6.x86_64 x86_64
+maskimg_4dfp xright_ant_putamen_av133 xright_ant_putamen_av133 right_anterior_putamen -v13 
+$Id: maskimg_4dfp.c,v 1.17 2012/06/27 22:33:19 avi Exp $
+littleendian
+xright_ant_putamen_av133 threshold=0.000000
+rec xright_ant_putamen_av133.4dfp.img  Fri Jul  5 12:50:15 2013  suy@bruckner Linux 2.6.32-279.9.1.el6.x86_64 x86_64
+analyzeto4dfp xright_ant_putamen_av133 
+$Id: analyzeto4dfp.c,v 1.20 2009/03/18 04:00:25 avi Exp $
+littleendian
+xright_ant_putamen_av133.img.rec not found
+endrec Fri Jul  5 12:50:15 2013  suy
+endrec Wed Jan 29 11:04:43 2014  suy
+rec left_post_putamen.4dfp.img  Wed Jan 29 11:06:07 2014  suy@bruckner Linux 2.6.32-279.9.1.el6.x86_64 x86_64
+maskimg_4dfp lxxleftpost_putamen_gm_final lxxleftpost_putamen_gm_final left_post_putamen -v14 
+$Id: maskimg_4dfp.c,v 1.17 2012/06/27 22:33:19 avi Exp $
+littleendian
+lxxleftpost_putamen_gm_final threshold=0.000000
+rec lxxleftpost_putamen_gm_final.4dfp.img  Fri Jul  5 12:47:55 2013  suy@bruckner Linux 2.6.32-279.9.1.el6.x86_64 x86_64
+analyzeto4dfp lxxleftpost_putamen_gm_final 
+$Id: analyzeto4dfp.c,v 1.20 2009/03/18 04:00:25 avi Exp $
+littleendian
+lxxleftpost_putamen_gm_final.img.rec not found
+endrec Fri Jul  5 12:47:55 2013  suy
+endrec Wed Jan 29 11:06:07 2014  suy
+rec right_post_putamen.4dfp.img  Wed Jan 29 11:06:26 2014  suy@bruckner Linux 2.6.32-279.9.1.el6.x86_64 x86_64
+maskimg_4dfp lxxrightpost_putamen_gm_final lxxrightpost_putamen_gm_final right_post_putamen -v15 
+$Id: maskimg_4dfp.c,v 1.17 2012/06/27 22:33:19 avi Exp $
+littleendian
+lxxrightpost_putamen_gm_final threshold=0.000000
+rec lxxrightpost_putamen_gm_final.4dfp.img  Fri Jul  5 12:48:27 2013  suy@bruckner Linux 2.6.32-279.9.1.el6.x86_64 x86_64
+analyzeto4dfp lxxrightpost_putamen_gm_final 
+$Id: analyzeto4dfp.c,v 1.20 2009/03/18 04:00:25 avi Exp $
+littleendian
+lxxrightpost_putamen_gm_final.img.rec not found
+endrec Fri Jul  5 12:48:27 2013  suy
+endrec Wed Jan 29 11:06:26 2014  suy
+rec centrum_semiovale.4dfp.img  Wed Jan 29 11:07:08 2014  suy@bruckner Linux 2.6.32-279.9.1.el6.x86_64 x86_64
+maskimg_4dfp xxxlslcentrum_semi_spm_jpeg xxxlslcentrum_semi_spm_jpeg centrum_semiovale -v16 
+$Id: maskimg_4dfp.c,v 1.17 2012/06/27 22:33:19 avi Exp $
+littleendian
+xxxlslcentrum_semi_spm_jpeg threshold=0.000000
+rec xxxlslcentrum_semi_spm_jpeg.4dfp.img  Fri Jul  5 12:51:03 2013  suy@bruckner Linux 2.6.32-279.9.1.el6.x86_64 x86_64
+analyzeto4dfp xxxlslcentrum_semi_spm_jpeg 
+$Id: analyzeto4dfp.c,v 1.20 2009/03/18 04:00:25 avi Exp $
+littleendian
+xxxlslcentrum_semi_spm_jpeg.img.rec not found
+endrec Fri Jul  5 12:51:03 2013  suy
+endrec Wed Jan 29 11:07:08 2014  suy
+defined or zero output voxel count = 902629 out of 902629 total
+endrec Wed Jan 29 11:33:31 2014  suy
