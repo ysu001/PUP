@@ -1,0 +1,66 @@
+################################################################################
+# PET source data params						       #
+################################################################################
+# Location of the original PET data file (absolute path)
+petdir=/data/nil-bluearc/benzinger2/diantu/TestProcessing_Dvp/DCA_Download/1011001/1011001_A45MR_v2/scans/43/DICOM/
+# PET data file name
+petfn="*.dcm"
+# petid is used as the target name of the 4dfp file and the root for various file
+# names
+petid=1011001_A45_PUP
+# tracer half life (in seconds) - F18 = 110min - C11 = 20.4min
+half_life=6600
+# whether the original data is DICOM (0), ECAT (1), or Siemens InterFile format (2)
+format=0
+# filtering parameters #not necessary for validation #to use after
+#filterxy=5.0
+#filterz=5.0
+# delay of scan versus injection (in minutes)
+delay=0
+################################################################################
+# PET motion correction params						       #
+################################################################################
+#time bin length (in seconds)
+tbl=300
+# Tolerance for motion correction
+tolmoco=200
+################################################################################
+# FREESURFER parameters							       #
+################################################################################
+# PET atlas flag
+tgflag=1
+# Location of the pet atlas files.
+petatldir=/data/nil-bluearc/benzinger2/suy/Avid
+# The root name of pet atlas template file
+refimg=AV45_A01_PETtmp
+# the root name of pet atlas roi image file
+roiimg=AV45ROI
+# atlas ROI list file
+roilist=AV45ROI.txt
+maskroot=brainmask
+
+################################################################################
+# PET to target registration parameters					       #
+################################################################################
+tolreg=200
+rmf=-rm
+mmf=-mm
+mbf="-mb 6"
+modf=""
+
+
+################################################################################
+# Modeling parameters							       #
+################################################################################
+# Model Starting Time in Minutes from time of injection and scan for dynamic scans
+mst=50
+# Model Duration in Minutes  for dynamic scans
+mdt=20
+
+# SUVR flag
+suvr=1
+
+# Reference ROI label string
+refroistr=Entire_cerebellum
+
+
