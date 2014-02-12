@@ -73,10 +73,10 @@ cp $roidir/${roilist} .
 
 ###############################################################################
 # atlas registration
-mpr2atl_4dfp $mrid -T/$atlpath/$atltarg
+mpr2atl_4dfp $mrid -T$atlpath/$atltarg
 
 # generate brainmask
-msktgen_4dfp $mrid -T/$atlpath/$atltarg
+msktgen_4dfp $mrid -T$atlpath/$atltarg
 
 # populate maskfile parameter in the params file for further processing
 echo "maskfile=${mrid}_mskt.4dfp.img" >> $paramsfn
