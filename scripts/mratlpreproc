@@ -20,12 +20,21 @@
 #									       #
 ################################################################################
 # Yi Su, 01/31/2014
+VERSION=1.1
 
-idstr='$Id: mratlpreproc,v 1.1 Mon Feb  3 09:46:46 CST 2014 suy $'
+if [ "$1" == "--version" ]; then
+    echo $VERSION
+    exit 0
+fi
 
-echo $idstr
+die(){
+    echo >&2 "$@"
+    exit -1
+}
 
 program=`basename $0`
+idstr='$Id: '$program',v '$VERSION' Mon Feb  3 09:46:46 CST 2014 suy $'
+echo $idstr
 
 if [ $# -lt 1 ]
 then
@@ -44,7 +53,7 @@ source $paramsfn
 ###############################################################################
 # Populate files
 
-dcm_to_4dfp -b ${mrid}S $mrdir/$mrfn
+dcm_to_4dfp -b ${mrid}S $mrdir/$mrfn || die "$program ERROR: DICOM to 4dfp conversion failed"
 
 # The MR is typically MPRAGE data acquired sagitally, will convert to
 # transverse first.
@@ -58,13 +67,14 @@ then
 	done
 elif (( ori == 3 ))
 then
-	C2T_4dfp ${mrid}S ${mrid}
+	C2T_4dfp ${mrid}S ${mrid} || die "$program ERROR: C2T_4dfp ${mrid}S ${mrid} failed"
 elif (( ori == 4 ))
 then
-	S2T_4dfp ${mrid}S ${mrid}
+	S2T_4dfp ${mrid}S ${mrid} || die "$program ERROR: S2T_4dfp ${mrid}S ${mrid} failed"
 else
-	echo "ERROR mratlpreproc: Wrong Orientation FLAG"
-	exit -1
+	ERR="ERROR mratlpreproc: Wrong Orientation FLAG"
+	echo $ERR
+	die $program $ERR
 fi
 rm ${mrid}S.4dfp.*
 
@@ -73,10 +83,10 @@ cp $roidir/${roilist} .
 
 ###############################################################################
 # atlas registration
-mpr2atl_4dfp $mrid -T$atlpath/$atltarg
+mpr2atl_4dfp $mrid -T$atlpath/$atltarg || die "$program ERROR: atlas registration failed"
 
 # generate brainmask
-msktgen_4dfp $mrid -T$atlpath/$atltarg
+msktgen_4dfp $mrid -T$atlpath/$atltarg || die "$program ERROR: brainmask generation failed"
 
 # populate maskfile parameter in the params file for further processing
 echo "maskfile=${mrid}_mskt.4dfp.img" >> $paramsfn

@@ -7,12 +7,21 @@
 #                                                                              #
 ################################################################################
 # Yi Su, 01/08/2014
+VERSION=1.1
 
-idstr='$Id: petsuvrrep,v 1.1 Mon Feb  3 09:46:28 CST 2014 suy $'
+if [ "$1" == "--version" ]; then
+    echo $VERSION
+    exit 0
+fi
 
-echo $idstr
+die(){
+    echo >&2 "$@"
+    exit -1
+}
 
 program=`basename $0`
+idstr='$Id: '$program',v '$VERSION' Mon Feb  3 09:46:28 CST 2014 suy $'
+echo $idstr
 
 if [ $# -lt 1 ]
 then
@@ -31,15 +40,15 @@ source $paramsfn
 ###############################################################################
 if (( FS == 1 ))
 then
-	fssuvrsum $petid $roisfn .suvr .txt
+	fssuvrsum $petid $roisfn .suvr .txt || die "$program ERROR: fssuvrsum $petid $roisfn .suvr .txt failed"
 	if (( rsfflag == 1 ))
 	then
-		fssuvrsum $petid $roisfn _RSF.suvr _RSF.txt
+		fssuvrsum $petid $roisfn _RSF.suvr _RSF.txt || die "$program ERROR: fssuvrsum $petid $roisfn _RSF.suvr _RSF.txt failed"
 	fi
 	if (( pvc2cflag == 1 ))
 	then
-		fssuvrsum $petid $roisfn _PVC2C.suvr _PVC2C.txt
-	fi	
+		fssuvrsum $petid $roisfn _PVC2C.suvr _PVC2C.txt || die "$program ERROR: fssuvrsum $petid $roisfn _PVC2C.suvr _PVC2C.txt failed"
+	fi
 fi
 
 
@@ -48,13 +57,11 @@ fi
 
 if (( tgflag == 1 ))
 then
-	petatlsuvrsum $petid $roilist .suvr .txt
+	petatlsuvrsum $petid $roilist .suvr .txt || die "$program ERROR: petatlsuvrsum $petid $roilist .suvr .txt failed"
 fi
 
 if (( tgflag == 2 ))
 then
-	petatlsuvrsum $petid $roilist .suvr .txt
+	petatlsuvrsum $petid $roilist .suvr .txt || die "$program ERROR: petatlsuvrsum $petid $roilist .suvr .txt failed"
 fi
 ###############################################################################
-
-exit $?

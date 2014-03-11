@@ -23,12 +23,21 @@
 # The output of this program is a series of TAC curves			       #
 ################################################################################
 # Yi Su, 12/24/2013
+VERSION=1.0
 
-idstr='$Id: fspreproc,v 1.0 2013/12/24 18:07:48 suy Exp $'
+if [ "$1" == "--version" ]; then
+    echo $VERSION
+    exit 0
+fi
 
-echo $idstr
+die(){
+    echo >&2 "$@"
+    exit -1
+}
 
 program=`basename $0`
+idstr='$Id: '$program',v '$VERSION' 2013/12/24 18:07:48 suy Exp $'
+echo $idstr
 
 if [ $# -lt 1 ]
 then
@@ -48,8 +57,8 @@ source $paramsfn
 cp $fsdir/$t1 .
 cp $fsdir/$wmparc .
 
-mgzto4dfp $t1
-mgzto4dfp $wmparc
+mgzto4dfp $t1 || die "$program ERROR: mgzto4dfp $t1 failed"
+mgzto4dfp $wmparc || die "$program ERROR: mgzto4dfp $wmparc failed"
 
 mrroot=${t1%.*}
 mrroot=${mrroot}001
@@ -58,10 +67,10 @@ fsfroot=${fsfroot}001
 
 ###############################################################################
 # Processing freesurfer rois, whole head roi, and prepare for roi analysis
-if [ ! -e ${mrroot}"_g9.4dfp.img" ] 
+if [ ! -e ${mrroot}"_g9.4dfp.img" ]
 then
-	gauss_4dfp ${mrroot} 0.9
+	gauss_4dfp ${mrroot} 0.9 || die "$program ERROR: gauss_4dfp ${mrroot} 0.9 failed"
 fi
-maskimg_4dfp -v1 -t15 T1001_g9  T1001_g9 Head_Mask
-PreprocessRSFtest2 $fsfroot Head_Mask  RSFMask ROIlist.txt $fslut
+maskimg_4dfp -v1 -t15 T1001_g9  T1001_g9 Head_Mask || die "$program ERROR: maskimg_4dfp -v1 -t15 T1001_g9  T1001_g9 Head_Mask failed"
+PreprocessRSFtest2 $fsfroot Head_Mask  RSFMask ROIlist.txt $fslut || die "$program ERROR: PreprocessRSFtest2 $fsfroot Head_Mask  RSFMask ROIlist.txt $fslut failed"
 

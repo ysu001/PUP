@@ -8,12 +8,20 @@
 # This script reads a params file for PET processing                           #
 ################################################################################
 # Yi Su, 01/08/2014
+VERSION=1.0
+if [ "$1" == "--version" ]; then
+    echo $VERSION
+    exit 0
+fi
 
-idstr='$Id: petproc,v 1.0 Fri Jan 31 09:41:55 CST 2014 suy $'
-
-echo $idstr
+die(){
+    echo >&2 "$@"
+    exit -1
+}
 
 program=`basename $0`
+idstr='$Id: '$program',v '$VERSION' Fri Jan 31 09:41:55 CST 2014 suy $'
+echo $idstr
 
 if [ $# -lt 1 ]
 then
@@ -36,39 +44,19 @@ cd pet_proc
 
 ###############################################################################
 # PET file conversion
-petpreproc $paramsfn
-if [ "$?" -ne "0" ]
-then
-	echo "PET file conversion ERROR!"
-	exit -1
-fi
+petpreproc $paramsfn || die "$program ERROR: PET file conversion failed"
 
 ###############################################################################
 # PET motion correction
-petmoco $paramsfn
-if [ "$?" -ne "0" ]
-then
-	echo "PET motion correction ERROR!"
-	exit -1
-fi
+petmoco $paramsfn || die "$program ERROR: PET motion correction failed"
 
 ###############################################################################
 # ROI target preprocessing
-targpreproc $paramsfn
-if [ "$?" -ne "0" ]
-then
-	echo "ROI target preprocessing ERROR!"
-	exit -1
-fi
+targpreproc $paramsfn || die "$program ERROR: ROI target preprocessing failed"
 
 ###############################################################################
 # PET to target space registration
-petreg $paramsfn
-if [ "$?" -ne "0" ]
-then
-	echo "PET to target registration ERROR!"
-	exit -1
-fi
+petreg $paramsfn || die "$program ERROR: PET to target registration failed"
 
 ###############################################################################
 #				Start Modeling				      #
@@ -76,45 +64,21 @@ fi
 
 ###############################################################################
 # Determine model frames
-petmdlframes $paramsfn
-if [ "$?" -ne "0" ]
-then
-	echo "Model Frames ERROR!"
-	exit -1
-fi
-
+petmdlframes $paramsfn || die "$program ERROR: Model Frames failed"
 
 ###############################################################################
 # Full Kinetic Processing
 
 # ROI TAC extraction
-petroitac $paramsfn
-if [ "$?" -ne "0" ]
-then
-	echo "ROI TAC extraction ERROR!"
-	exit -1
-fi
+petroitac $paramsfn || die "$program ERROR: ROI TAC extraction failed"
 
 # Logan Reference Region Analysis
 if [ "$model" = "logan" ]
 then
-	petrefroi $paramsfn
-	refstat=$?
-	if [ "$refstat" -eq "0" ]
-	then
-		petroiloganREF $paramsfn
-		loganstat=$?
-		if [ "$loganstat" -eq "0" ]
-		then
-			petloganrep $paramsfn
-		else
-			echo "Logan Reference Region Analysis Failure!"
-		fi
-	else
-		echo " REF TAC extraction ERROR!"		
-	fi
+	petrefroi $paramsfn || die "$program ERROR: REF TAC extraction failed"
+	petroiloganREF $paramsfn || die "$program ERROR: Logan Reference Region Analysis failed"
+	petloganrep $paramsfn || die "$program ERROR: petloganrep failed"
 fi
-
 # Additional analysis will be implemented in the future
 
 ###############################################################################
@@ -122,20 +86,10 @@ fi
 
 if [ "$suvr" = "1" ]
 then
-	petmdlsum $paramsfn
-	petroiint $paramsfn
-	if [ "$?" -eq "0" ]
-	then
-		petrefroi $paramsfn
-		petsuvr $paramsfn	
-		if [ "$?" -eq "0" ]
-		then
-			petsuvrrep $paramsfn
-		else
-			echo "SUVR Analysis Failure!"
-		fi
-	else
-		echo " Static ROI intensity extraction ERROR!"		
-	fi
+	petmdlsum $paramsfn || die "$program ERROR: petmdlsum failed"
+	petroiint $paramsfn || die "$program ERROR: Static ROI intensity extraction failed"
+	petrefroi $paramsfn || die "$program ERROR: petrefroi failed"
+	petsuvr $paramsfn || die "$program ERROR: SUVR Analysis failed"
+	petsuvrrep $paramsfn || die "$program ERROR: SUVR Analysis failed"
 fi
 

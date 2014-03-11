@@ -18,12 +18,21 @@
 #									       #
 ################################################################################
 # Yi Su, 01/07/2014
+VERSION=1.0
 
-idstr='$Id: petmdlsum,v 1.0 2014/01/07 18:07:48 suy Exp $'
+if [ "$1" == "--version" ]; then
+    echo $VERSION
+    exit 0
+fi
 
-echo $idstr
+die(){
+    echo >&2 "$@"
+    exit -1
+}
 
 program=`basename $0`
+idstr='$Id: '$program',v '$VERSION' 2014/01/07 18:07:48 suy Exp $'
+echo $idstr
 
 if [ $# -lt 1 ]
 then
@@ -40,7 +49,7 @@ source $paramsfn
 # the inputs specified in the params file
 
 # Sum PET frames
-sum_pet_4dfp ${petid}_moco $sf $ef -d -h${half_life} ${petid}_msum
+sum_pet_4dfp ${petid}_moco $sf $ef -d -h${half_life} ${petid}_msum || die "$program ERROR: sum_pet_4dfp ${petid}_moco $sf $ef -d -h${half_life} ${petid}_msum failed"
 
 # Processing info file
 st=`gawk 'NR=='$sf' {print $1}' ${petid}.info`

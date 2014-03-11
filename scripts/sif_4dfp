@@ -2,12 +2,23 @@
 ###############################################################################
 # Program to convert Siemens interfile data into 4dfp format data             #
 ###############################################################################
-
 # Yi Su, 2013/10/11
+VERSION=1.0
 
-idstr='$Id: sif_4dfp,v sif_4dfp Tue Feb 25 11:27:39 CST 2014 suy $'
-echo $idstr
+if [ "$1" == "--version" ]; then
+    echo $VERSION
+    exit 0
+fi
+
+die(){
+    echo >&2 "$@"
+    exit -1
+}
+
 program=`basename $0`
+idstr='$Id: '$program',v '$VERSION' Tue Feb 25 11:27:39 CST 2014 suy $'
+echo $idstr
+
 if [ $# -lt 2 ]
 then
 	echo "Usage: $program sifstr outroot"
@@ -70,9 +81,9 @@ echo "scaling factor (mm/pixel) [2]	:= $sf2" >> $tmpfr
 echo "scaling factor (mm/pixel) [3]	:= $sf3" >> $tmpfr
 
 # create 4dfp for first frame
-ifh2hdr ${tmproot}
+ifh2hdr ${tmproot} || die "$program ERROR: ifh2hdr ${tmproot} failed"
 ln -s ${sifdir}/${datafn} ${tmproot}.4dfp.img
-flip_4dfp -z ${tmproot} ${outroot}_f1
+flip_4dfp -z ${tmproot} ${outroot}_f1 || die "$program ERROR: flip_4dfp -z ${tmproot} ${outroot}_f1 failed"
 rm ${tmproot}.4dfp.*
 
 # write rec file
@@ -118,22 +129,22 @@ then
 	echo "scaling factor (mm/pixel) [3]	:= $sf3" >> $tmpfr
 
 	# create 4dfp for the $ith frame
-	ifh2hdr ${tmproot}
+	ifh2hdr ${tmproot} || die "$program ERROR: ifh2hdr ${tmproot} failed"
 	ln -s ${sifdir}/${datafn} ${tmproot}.4dfp.img
-	flip_4dfp -z ${tmproot} ${outroot}_f${i}
+	flip_4dfp -z ${tmproot} ${outroot}_f${i} || die "$program ERROR: flip_4dfp -z ${tmproot} ${outroot}_f${i} failed"
 	rm ${tmproot}.4dfp.*
 
-	# write info file	
+	# write info file
 	frd1=$(echo "scale=6; $frd*1000" | bc )
 	st1=$(echo "scale=6; $st*1000" | bc )
 	imax=`imgmax_4dfp ${outroot}_f${i} | gawk '{print $1}'`
 	imin=`imgmax_4dfp -m ${outroot}_f${i} | gawk '{print $2}'`
 	printf 'Frame_%d \t%10.0f \t%10.2f \t%10.0f \t%10.2f \t%10.2f \t%10.6f \t%10s\n' $i $frd1 $t $st1 $imin $imax $dcf 1 >>${outroot}1.4dfp.img.rec
-	
+
 	# create lst file
 	echo ${outroot}_f${i} >> ${outroot}.lst
     done
-    paste_4dfp -a ${outroot}.lst $outroot
+    paste_4dfp -a ${outroot}.lst $outroot || die "$program ERROR: paste_4dfp -a ${outroot}.lst $outroot failed"
     rm ${outroot}_f*.4dfp.*
     rm ${outroot}.lst
 else
@@ -143,7 +154,7 @@ fi
 instr=`grep "conversion program" ${outroot}.4dfp.ifh`
 outstr="conversion program	:= sif_4dfp"
 sed "s/$instr/$outstr/" -i ${outroot}.4dfp.ifh
-ifh2hdr ${outroot}
+ifh2hdr ${outroot} || die "$program ERROR: ifh2hdr ${outroot} failed"
 rm ${outroot}.4dfp.img.rec
 cp ${outroot}1.4dfp.img.rec ${outroot}.4dfp.img.rec
 echo endrec `date` `whoami` >> ${outroot}.4dfp.img.rec

@@ -1,12 +1,24 @@
 #!/bin/bash
 ################################################################################
-# This program registers two 4dfp images using imgreg_4dfp		       #     
+# This program registers two 4dfp images using imgreg_4dfp		       #
 ################################################################################
-# Yi Su, 2012/03/16                                                            
+# Yi Su, 2012/03/16
+VERSION=1.1
 
-idstr='$Id: reg2img,v 1.1 Fri Jan 31 09:45:13 CST 2014 suy $'
-echo $idstr
+if [ "$1" == "--version" ]; then
+    echo $VERSION
+    exit 0
+fi
+
+die(){
+    echo >&2 "$@"
+    exit -1
+}
+
 program=`basename $0`
+idstr='$Id: '$program',v '$VERSION' Fri Jan 31 09:45:13 CST 2014 suy $'
+echo $idstr
+
 if [ $# -lt 2 ]
 then
 	echo "Usage: $program refimg movimg"
@@ -23,7 +35,7 @@ then
 	echo "	-f (only fine search is performed (default is with coarse"
 	echo "	    search))"
 	exit -1
-fi	
+fi
 
 ################################
 # setting default parameters
@@ -66,12 +78,13 @@ while [ $# -gt 0 ]; do
 	    rmsk=$2
 	    shift
 	    if [ ! -f $rmsk ]; then
-	       echo "Error: Mask file doesn't exist!"
-	       exit -1
+         ERR="$program ERROR: Mask file doesn't exist!"
+	       echo $ERR
+	       die $ERR
 	    fi
 	    grm=0
 	    ;;
-	esac   	       
+	esac
       fi
       ;;
     -rb)
@@ -79,48 +92,53 @@ while [ $# -gt 0 ]; do
        then
          case "$2" in
 	   -*)
-	     echo "Error: -rb must be followed with a number"
-	     exit -1
+	     ERR="$program ERROR: -rb must be followed with a number"
+       echo $ERR
+	     die $ERR
 	     ;;
 	   [0-9]*)
 	     rb=$2
 	     shift
 	     ;;
-	   *)     
-	     echo "Error: -rb must be followed with a number"
-	     exit -1
+	   *)
+       ERR="$program ERROR: -rb must be followed with a number"
+       echo $ERR
+       die $ERR
 	     ;;
-	 esac  
+	 esac
        fi
        ;;
-     -mb)   
+     -mb)
        if [ -n "$2" ]
        then
          case "$2" in
 	   -*)
-	     echo "Error: -mb must be followed with a number"
-	     exit -1
+       ERR="$program ERROR: -mb must be followed with a number"
+       echo $ERR
+       die $ERR
 	     ;;
 	   [0-9]*)
 	     mb=$2
 	     shift
 	     ;;
-	   *)     
-	     echo "Error: -mb must be followed with a number"
-	     exit -1
+	   *)
+       ERR="$program ERROR: -mb must be followed with a number"
+       echo $ERR
+       die $ERR
 	     ;;
-	 esac  
+	 esac
        fi
        ;;
      -*)
-      echo "Unrecognized options for reg2img"
-      exit -1
-      ;;  
+      ERR="$program ERROR: Unrecognized options"
+      echo $ERR
+      die $ERR
+      ;;
      *)
       refimg=$1
       movimg=$2
       shift
-      ;;  
+      ;;
   esac
   shift
 done
@@ -131,17 +149,19 @@ then
     refname=`basename $refimg`
     refroot=${refname%%.*}
 else
-    echo "$program: Missing refimg"
-    exit -1
-fi        
+    ERR="$program ERROR: Missing refimg"
+    echo $ERR
+    die $ERR
+fi
 if [ -n "$movimg" ]
 then
     movdir=`dirname $movimg`
     movname=`basename $movimg`
     movroot=${movname%%.*}
 else
-    echo "$program: Missing movimg"
-    exit -1
+    ERR="$program ERROR: Missing movimg"
+    echo $ERR
+    die $ERR
 fi
 
 echo refroot: $refroot
@@ -151,36 +171,36 @@ echo mb=$mb
 echo rm=$rm
 echo mm=$mm
 
-imgblur_4dfp $refimg $rb
-imgblur_4dfp $movimg $mb
+imgblur_4dfp $refimg $rb || die "$program ERROR: imgblur_4dfp $refimg $rb failed"
+imgblur_4dfp $movimg $mb || die "$program ERROR: imgblur_4dfp $movimg $mb failed"
 rbx=`echo $rb | awk '{print 10*$1}'`
 mbx=`echo $mb | awk '{print 10*$1}'`
 
 if [ "$rm" -eq 1 ] && [ "$grm" -eq 1 ]
 then
-    maskimg_4dfp ${refroot}"_b"${rbx} ${refroot}"_b"${rbx} -t.5 ${refroot}"_msk" -v1
+    maskimg_4dfp ${refroot}"_b"${rbx} ${refroot}"_b"${rbx} -t.5 ${refroot}"_msk" -v1 || die "$program ERROR: maskimg_4dfp ${refroot}_b${rbx} ${refroot}_b${rbx} -t.5 ${refroot}_msk -v1 failed"
     nsl=`gawk '/matrix size \[3\]/ {print $NF}' ${refroot}".4dfp.ifh"`
     msl=3
-    zero_slice_4dfp ${refroot}"_msk" z 1 $msl  ${refroot}"_mskz"
+    zero_slice_4dfp ${refroot}"_msk" z 1 $msl  ${refroot}"_mskz" || die "$program ERROR: zero_slice_4dfp ${refroot}_msk z 1 $msl  ${refroot}_mskz failed"
     k=$((nsl-msl+1))
-    zero_slice_4dfp ${refroot}"_mskz" z $k $nsl ${refroot}"_msk"
+    zero_slice_4dfp ${refroot}"_mskz" z $k $nsl ${refroot}"_msk" || die "$program ERROR: zero_slice_4dfp ${refroot}_mskz z $k $nsl ${refroot}_msk failed"
     rmsk=${refroot}"_msk"
 fi
 
 if [ "$mm" -eq 1 ]
 then
-    maskimg_4dfp ${movroot}"_b"${mbx} ${movroot}"_b"${mbx} -t.5 ${movroot}"_msk" -v1
+    maskimg_4dfp ${movroot}"_b"${mbx} ${movroot}"_b"${mbx} -t.5 ${movroot}"_msk" -v1 || die "$program ERROR: maskimg_4dfp ${movroot}_b${mbx} ${movroot}_b${mbx} -t.5 ${movroot}_msk -v1 failed"
     nsl=`gawk '/matrix size \[3\]/ {print $NF}' ${movroot}".4dfp.ifh"`
     msl=3
-    zero_slice_4dfp ${movroot}"_msk" z 1 $msl  ${movroot}"_mskz"
+    zero_slice_4dfp ${movroot}"_msk" z 1 $msl  ${movroot}"_mskz" || die "$program ERROR: zero_slice_4dfp ${movroot}_msk z 1 $msl  ${movroot}_mskz failed"
     k=$((nsl-msl+1))
-    zero_slice_4dfp ${movroot}"_mskz" z $k $nsl ${movroot}"_msk"
+    zero_slice_4dfp ${movroot}"_mskz" z $k $nsl ${movroot}"_msk" || die "$program ERROR: zero_slice_4dfp ${movroot}_mskz z $k $nsl ${movroot}_msk failed"
     mmsk=${movroot}"_msk"
 fi
 
 echo rmsk=$rmsk
 echo mmsk=$mmsk
- 
+
 if [ "$cross" -eq 1 ] && [ "$global" -eq 1 ]
 then
     modes=( 4099 2051 10243 )
@@ -216,21 +236,21 @@ if [ ! -e $t4file1 ]
 then
 	ori=`awk '/orientation/{print $NF - 1}' ${refdir}/${refroot}".4dfp.ifh"`
 	ori=$((ori-1))
-	t4_inv ${RELEASE}/${oristr[$ori]}"_t4" temp$$"_t4"
+	t4_inv ${RELEASE}/${oristr[$ori]}"_t4" temp$$"_t4"  || die "$program ERROR: t4_inv failed"
 	ori=`awk '/orientation/{print $NF - 1}' ${movdir}/${movroot}".4dfp.ifh"`
 	ori=$((ori-1))
-	t4_mul ${RELEASE}/${oristr[$ori]}"_t4" temp$$"_t4" $t4file1
-	rm temp$$_t4			
+	t4_mul ${RELEASE}/${oristr[$ori]}"_t4" temp$$"_t4" $t4file1 || die "$program ERROR: t4_mul failed"
+	rm temp$$_t4
 fi
 if [ ! -e $t4file2 ]
 then
 	ori=`awk '/orientation/{print $NF - 1}' ${movdir}/${movroot}".4dfp.ifh"`
 	ori=$((ori-1))
-	t4_inv ${RELEASE}/${oristr[$ori]}"_t4" temp$$"_t4"
+	t4_inv ${RELEASE}/${oristr[$ori]}"_t4" temp$$"_t4" || die "$program ERROR: t4_inv failed"
 	ori=`awk '/orientation/{print $NF - 1}' ${refdir}/${refroot}".4dfp.ifh"`
 	ori=$((ori-1))
-	t4_mul ${RELEASE}/${oristr[$ori]}"_t4" temp$$"_t4" $t4file2
-	rm temp$$_t4		
+	t4_mul ${RELEASE}/${oristr[$ori]}"_t4" temp$$"_t4" $t4file2 || die "$program ERROR: t4_mul failed"
+	rm temp$$_t4
 fi
 
 refi=${refroot}"_b"$rbx
@@ -243,11 +263,11 @@ do
     echo >> $log
     echo imgreg_4dfp $refi $rmsk $movi $mmsk $t4file1 $mode
     echo imgreg_4dfp $refi $rmsk $movi $mmsk $t4file1 $mode >> $log
-         imgreg_4dfp $refi $rmsk $movi $mmsk $t4file1 $mode >> $log
+         imgreg_4dfp $refi $rmsk $movi $mmsk $t4file1 $mode >> $log || die "$program ERROR: imgreg_4dfp $refi $rmsk $movi $mmsk $t4file1 $mode failed"
     echo >> $log
     echo imgreg_4dfp $movi $mmsk $refi $rmsk $t4file2 $mode
     echo imgreg_4dfp $movi $mmsk $refi $rmsk $t4file2 $mode >> $log
-         imgreg_4dfp $movi $mmsk $refi $rmsk $t4file2 $mode >> $log    
+         imgreg_4dfp $movi $mmsk $refi $rmsk $t4file2 $mode >> $log || die "$program ERROR: imgreg_4dfp $movi $mmsk $refi $rmsk $t4file2 $mode failed"
 done
 
 ##################################################################################################
@@ -255,17 +275,17 @@ done
 
 resolvelog=${refroot}"_"${movroot}"_"${program}"_resolve.log"
 echo t4_resolve ${refroot} ${movroot} -o${refroot}
-t4_resolve ${refroot} ${movroot} -o${refroot} > $resolvelog
+t4_resolve ${refroot} ${movroot} -o${refroot} > $resolvelog || die "$program ERROR: t4_resolve ${refroot} ${movroot} -o${refroot} failed"
 
 error=`gawk '/estimate total rotation error/{rot = $5} /estimate total translation error/{trans = $5} END{printf ("%3d", 100*(trans + 1.4*rot))}' $resolvelog`
 echo                           >> $resolvelog
 echo "ERROR = " $error
 echo "ERROR = " $error >> $resolvelog
-if (( $error < 100 )) 
+if (( $error < 100 ))
 then
 	echo "ERROR is LOW, image reconciliation is good"
 	echo "ERROR is LOW, image reconciliation is good"             >> $resolvelog
-elif (( $error > 200 )) 
+elif (( $error > 200 ))
 then
 	echo "ERROR is HIGH, cross-image reconciliation is poor"
 	echo "ERROR is HIGH, cross-image reconciliation is poor"      >> $resolvelog

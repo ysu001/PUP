@@ -1,12 +1,24 @@
 #!/bin/bash
 ################################################################################
-# This program registers 4dfp pet image to a population based pet atlas	       #     
+# This program registers 4dfp pet image to a population based pet atlas	       #
 ################################################################################
-# Yi Su, 2013/07/05                                                            
+# Yi Su, 2013/07/05
+VERSION=1.0
 
-idstr='$Id: pet2petatl,v 1.0 Fri Jan 31 09:38:42 CST 2014 suy $'
-echo $idstr
+if [ "$1" == "--version" ]; then
+    echo $VERSION
+    exit 0
+fi
+
+die(){
+    echo >&2 "$@"
+    exit -1
+}
+
 program=`basename $0`
+idstr='$Id: '$program',v '$VERSION' Fri Jan 31 09:38:42 CST 2014 suy $'
+echo $idstr
+
 if [ $# -lt 2 ]
 then
 	echo "Usage: $program atlas movimg"
@@ -19,7 +31,7 @@ then
 	echo "	     default is no mask)"
 	echo "	-mb fwhm (blur moving image with fwhm in mm (default 3))"
 	exit -1
-fi	
+fi
 
 ################################
 # setting default parameters
@@ -52,43 +64,37 @@ while [ $# -gt 0 ]; do
 	  * )
 	    rmsk=$2
 	    shift
-	    if [ ! -f $rmsk ]; then
-	       echo "Error: Mask file doesn't exist!"
-	       exit -1
-	    fi
+	    test -f $rmsk || die "$program ERROR: Mask file doesn't exist!"
 	    grm=0
 	    ;;
-	esac   	       
+	esac
       fi
       ;;
-     -mb)   
+     -mb)
        if [ -n "$2" ]
        then
          case "$2" in
 	   -*)
-	     echo "Error: -mb must be followed with a number"
-	     exit -1
+	     die "$program ERROR: -mb must be followed with a number"
 	     ;;
 	   [0-9]*)
 	     mb=$2
 	     shift
 	     ;;
-	   *)     
-	     echo "Error: -mb must be followed with a number"
-	     exit -1
+	   *)
+	     die "$program ERROR: -mb must be followed with a number"
 	     ;;
-	 esac  
+	 esac
        fi
        ;;
      -*)
-      echo "Unrecognized options for pet2petatl"
-      exit -1
-      ;;  
+      die "$program ERROR: Unrecognized options for pet2petatl"
+      ;;
      *)
       atlas=$1
       movimg=$2
       shift
-      ;;  
+      ;;
   esac
   shift
 done
@@ -99,17 +105,15 @@ then
     refname=`basename $atlas`
     refroot=${refname%%.*}
 else
-    echo "$program: Missing atlas"
-    exit -1
-fi        
+    die "$program ERROR: Missing atlas"
+fi
 if [ -n "$movimg" ]
 then
     movdir=`dirname $movimg`
     movname=`basename $movimg`
     movroot=${movname%%.*}
 else
-    echo "$program: Missing movimg"
-    exit -1
+    die "$program ERROR: Missing movimg"
 fi
 
 echo refroot: $refroot
@@ -119,34 +123,34 @@ echo mb=$mb
 echo rmf=$rmf
 echo mm=$mm
 
-imgblur_4dfp $movimg $mb
+imgblur_4dfp $movimg $mb || die "$program ERROR: imgblur_4dfp $movimg $mb failed"
 mbx=`echo $mb | awk '{print 10*$1}'`
 
 if [ "$rmf" -eq 1 ] && [ "$grm" -eq 1 ]
 then
-    maskimg_4dfp ${atlas} ${atlas} -t.5 ${refroot}"_msk" -v1
+    maskimg_4dfp ${atlas} ${atlas} -t.5 ${refroot}"_msk" -v1 || die "$program ERROR: maskimg_4dfp ${atlas} ${atlas} -t.5 ${refroot}"_msk" -v1 failed"
     nsl=`gawk '/matrix size \[3\]/ {print $NF}' ${refdir}/${refroot}".4dfp.ifh"`
     msl=3
-    zero_slice_4dfp ${refroot}"_msk" z 1 $msl  ${refroot}"_mskz"
+    zero_slice_4dfp ${refroot}"_msk" z 1 $msl  ${refroot}"_mskz" || die "$program ERROR: zero_slice_4dfp ${refroot}"_msk" z 1 $msl  ${refroot}"_mskz" failed"
     k=$((nsl-msl+1))
-    zero_slice_4dfp ${refroot}"_mskz" z $k $nsl ${refroot}"_msk"
+    zero_slice_4dfp ${refroot}"_mskz" z $k $nsl ${refroot}"_msk" || die "$program ERROR: zero_slice_4dfp ${refroot}"_mskz" z $k $nsl ${refroot}"_msk" failed"
     rmsk=${refroot}"_msk"
 fi
 
 if [ "$mm" -eq 1 ]
 then
-    maskimg_4dfp ${movroot}"_b"${mbx} ${movroot}"_b"${mbx} -t.5 ${movroot}"_msk" -v1
+    maskimg_4dfp ${movroot}"_b"${mbx} ${movroot}"_b"${mbx} -t.5 ${movroot}"_msk" -v1 || die "$program ERROR: maskimg_4dfp ${movroot}"_b"${mbx} ${movroot}"_b"${mbx} -t.5 ${movroot}"_msk" -v1 failed"
     nsl=`gawk '/matrix size \[3\]/ {print $NF}' ${movroot}".4dfp.ifh"`
     msl=3
-    zero_slice_4dfp ${movroot}"_msk" z 1 $msl  ${movroot}"_mskz"
+    zero_slice_4dfp ${movroot}"_msk" z 1 $msl  ${movroot}"_mskz" || die "$program ERROR: zero_slice_4dfp ${movroot}"_msk" z 1 $msl  ${movroot}"_mskz" failed"
     k=$((nsl-msl+1))
-    zero_slice_4dfp ${movroot}"_mskz" z $k $nsl ${movroot}"_msk"
+    zero_slice_4dfp ${movroot}"_mskz" z $k $nsl ${movroot}"_msk" || die "$program ERROR: zero_slice_4dfp ${movroot}"_mskz" z $k $nsl ${movroot}"_msk" failed"
     mmsk=${movroot}"_msk"
 fi
 
 echo rmsk=$rmsk
 echo mmsk=$mmsk
- 
+
 
 modes=( 1283 1283 3335 2311 2311 )
 
@@ -167,11 +171,11 @@ if [ ! -e $t4file1 ]
 then
 	ori=`awk '/orientation/{print $NF - 1}' ${refdir}/${refroot}".4dfp.ifh"`
 	ori=$((ori-1))
-	t4_inv ${RELEASE}/${oristr[$ori]}"_t4" temp$$"_t4"
+	t4_inv ${RELEASE}/${oristr[$ori]}"_t4" temp$$"_t4" || die "$program ERROR: t4_inv failed"
 	ori=`awk '/orientation/{print $NF - 1}' ${movdir}/${movroot}".4dfp.ifh"`
 	ori=$((ori-1))
-	t4_mul ${RELEASE}/${oristr[$ori]}"_t4" temp$$"_t4" $t4file1
-	rm temp$$_t4			
+	t4_mul ${RELEASE}/${oristr[$ori]}"_t4" temp$$"_t4" $t4file1 || die "$program ERROR: t4_mul failed"
+	rm temp$$_t4
 fi
 
 
@@ -185,7 +189,7 @@ do
     echo >> $log
     echo imgreg_4dfp $refi $rmsk $movi $mmsk $t4file1 $mode
     echo imgreg_4dfp $refi $rmsk $movi $mmsk $t4file1 $mode >> $log
-         imgreg_4dfp $refi $rmsk $movi $mmsk $t4file1 $mode >> $log
+         imgreg_4dfp $refi $rmsk $movi $mmsk $t4file1 $mode >> $log || die "$program ERROR: imgreg_4dfp $refi $rmsk $movi $mmsk $t4file1 $mode failed"
 done
 
 

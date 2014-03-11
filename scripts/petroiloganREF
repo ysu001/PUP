@@ -19,12 +19,21 @@
 # The output of this program is binding potentials for each ROI		       #
 ################################################################################
 # Yi Su, 01/03/2014
+VERSION=1.1
 
-idstr='$Id: petroiloganREF,v 1.1 Mon Feb  3 09:46:15 CST 2014 suy $'
+if [ "$1" == "--version" ]; then
+    echo $VERSION
+    exit 0
+fi
 
-echo $idstr
+die(){
+    echo >&2 "$@"
+    exit -1
+}
 
 program=`basename $0`
+idstr='$Id: '$program',v '$VERSION' Mon Feb  3 09:46:15 CST 2014 suy $'
+echo $idstr
 
 if [ $# -lt 1 ]
 then
@@ -46,13 +55,13 @@ NROI=`wc -l $roilist | gawk '{print $1}'`
 for (( i=1; i<=$NROI; i++ ))
 do
 	label=`gawk 'NR=='$i' {print $1}' $roilist`
-	loganREFROI ${petid}_REF.tac ${petid}_${label}.tac ${label} $k2 $sf $ef ${petid}_${label}.mdl
+	loganREFROI ${petid}_REF.tac ${petid}_${label}.tac ${label} $k2 $sf $ef ${petid}_${label}.mdl || die "$program ERROR: loganREFROI ${petid}_REF.tac ${petid}_${label}.tac ${label} $k2 $sf $ef ${petid}_${label}.mdl failed"
 	if (( rsfflag == 1 ))
 	then
-		loganREFROI ${petid}_REF_RSF.tac ${petid}_${label}_RSF.tac ${label} $k2 $sf $ef ${petid}_${label}_RSF.mdl
+		loganREFROI ${petid}_REF_RSF.tac ${petid}_${label}_RSF.tac ${label} $k2 $sf $ef ${petid}_${label}_RSF.mdl || die "$program ERROR: loganREFROI ${petid}_REF_RSF.tac ${petid}_${label}_RSF.tac ${label} $k2 $sf $ef ${petid}_${label}_RSF.mdl failed"
 	fi
 	if (( pvc2cflag == 1 ))
 	then
-		loganREFROI ${petid}_REF_PVC2C.tac ${petid}_${label}_PVC2C.tac ${label} $k2 $sf $ef ${petid}_${label}_PVC2C.mdl
+		loganREFROI ${petid}_REF_PVC2C.tac ${petid}_${label}_PVC2C.tac ${label} $k2 $sf $ef ${petid}_${label}_PVC2C.mdl || die "$program ERROR: loganREFROI ${petid}_REF_PVC2C.tac ${petid}_${label}_PVC2C.tac ${label} $k2 $sf $ef ${petid}_${label}_PVC2C.mdl failed"
 	fi
 done

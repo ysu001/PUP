@@ -23,12 +23,21 @@
 # The output of this program is a series of TAC curves			       #
 ################################################################################
 # Yi Su, 01/07/2014
+VERSION=1.0
 
-idstr='$Id: petroiint,v 1.0 Fri Jan 31 09:40:16 CST 2014 suy $'
+if [ "$1" == "--version" ]; then
+    echo $VERSION
+    exit 0
+fi
 
-echo $idstr
+die(){
+    echo >&2 "$@"
+    exit -1
+}
 
 program=`basename $0`
+idstr='$Id: '$program',v '$VERSION' Fri Jan 31 09:40:16 CST 2014 suy $'
+echo $idstr
 
 if [ $# -lt 1 ]
 then
@@ -50,7 +59,7 @@ if (( rsfflag == 1 ))
 then
 	if [ ! -e RSFMat.dat ]
 	then
-		calrsfmat $roiimg $roilist RSFMat.dat $fwhm
+		calrsfmat $roiimg $roilist RSFMat.dat $fwhm || die "$program ERROR: calrsfmat $roiimg $roilist RSFMat.dat $fwhm failed"
 	fi
 fi
 
@@ -60,22 +69,22 @@ if (( pvc2cflag == 1 ))
 then
 	if [ ! -e pvc2c.txt ]
 	then
-		imgblur_4dfp BrainMask $fwhm
+		imgblur_4dfp BrainMask $fwhm || die "$program ERROR: imgblur_4dfp BrainMask $fwhm failed"
 		bx=`echo $fwhm | awk '{print 10*$1}'`
 		bstr="_b"$bx
-		roieval3 BrainMask${bstr} $roiimg PETFOV $roilist $NROI pvc2c 0
+		roieval3 BrainMask${bstr} $roiimg PETFOV $roilist $NROI pvc2c 0 || die "$program ERROR: roieval3 BrainMask${bstr} $roiimg PETFOV $roilist $NROI pvc2c 0 failed"
 		mv pvc2c_ROI2_f0 pvc2c.txt
 	fi
 fi
 
 ###############################################################################
 # Perform ROI analysis
-t4img_4dfp $pet2roit4 $petid ${petid}_on_roi -O${roiimg}
+t4img_4dfp $pet2roit4 $petid ${petid}_on_roi -O${roiimg} || die "$program ERROR: t4img_4dfp $pet2roit4 $petid ${petid}_on_roi -O${roiimg} failed"
 if (( rsfflag == 1 ))
 then
-	rsfroieval2 ${petid}"_on_roi" $roiimg RSFMat.dat PETFOV $roilist $NROI 10 ${petid} 1
+	rsfroieval2 ${petid}"_on_roi" $roiimg RSFMat.dat PETFOV $roilist $NROI 10 ${petid} 1 || die "$program ERROR: rsfroieval2 ${petid}_on_roi $roiimg RSFMat.dat PETFOV $roilist $NROI 10 ${petid} 1 failed"
 else
-	roieval3 ${petid}"_on_roi" $roiimg PETFOV $roilist $NROI ${petid} 1
+	roieval3 ${petid}"_on_roi" $roiimg PETFOV $roilist $NROI ${petid} 1 || die "$program ERROR: roieval3 ${petid}_on_roi $roiimg PETFOV $roilist $NROI ${petid} 1 failed"
 fi
 
 
@@ -83,13 +92,13 @@ fi
 # Generate ROI Files
 for (( i=1; i<=NROI; i++ ))
 do
-	(( l = i + 1 )) 
+	(( l = i + 1 ))
 	label=`gawk 'NR=='$i' {print $1}' $roilist`
 	echo "label = ${label}"
 	tacfn=${petid}_${label}.tac
 	rsftacfn=${petid}_${label}_RSF.tac
 	pvc2ctacfn=${petid}_${label}_PVC2C.tac
-	
+
 	NVOX=`gawk 'NR=='$l' {print $2}' ${petid}_ROI2_f1`
 	printf "%9s %15s %15s %15s %15s %10d\n" "Frame_#" "Start_Time_(s)" "Duration_(s)"  "Mean" "NVoxels=" $NVOX > $tacfn
 	if (( rsfflag == 1 ))
@@ -100,7 +109,7 @@ do
 	then
 		printf "%9s %15s %15s %15s %15s %10d\n" "Frame_#" "Start_Time_(s)" "Duration_(s)"  "Mean"  "NVoxels=" $NVOX > $pvc2ctacfn
 	fi
-	
+
 	framefn=${petid}"_ROI2_f1"
 	rsffn=${petid}"_RSF_ROI2_f1"
 	ts=`gawk 'NR==1 {print $1}'  ${petid}".info"`
@@ -108,15 +117,15 @@ do
 	meanroi=`gawk 'NR=='$l' {print $3}' $framefn`
 	printf "%9d %15f %15f %15f\n" 1 $ts $td $meanroi >> $tacfn
 	if (( rsfflag == 1 ))
-	then		
+	then
 		meanroirsf=`gawk 'NR=='$l' {print $3}' $rsffn`
 		printf "%9d %15f %15f %15f\n" 1 $ts $td $meanroirsf >> $rsftacfn
 	fi
 
 	if (( pvc2cflag == 1 ))
 	then
-		cf=`gawk '/'$label'/ {print $3}' pvc2c.txt`		
-		meanroipvc2c=$(echo "scale=8; $meanroi/($cf+0.00001)" | bc) 
+		cf=`gawk '/'$label'/ {print $3}' pvc2c.txt`
+		meanroipvc2c=$(echo "scale=8; $meanroi/($cf+0.00001)" | bc)
 		printf "%9d %15f %15f %15f\n" 1 $ts $td $meanroipvc2c >> $pvc2ctacfn
 	fi
 
