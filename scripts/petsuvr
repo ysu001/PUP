@@ -19,12 +19,21 @@
 # space									       #
 ################################################################################
 # Yi Su, 01/07/2014
+VERSION=1.0
 
-idstr='$Id: petsuvr,v 1.0 Fri Jan 31 09:40:22 CST 2014 suy $'
+if [ "$1" == "--version" ]; then
+    echo $VERSION
+    exit 0
+fi
 
-echo $idstr
+die(){
+    echo >&2 "$@"
+    exit -1
+}
 
 program=`basename $0`
+idstr='$Id: '$program',v '$VERSION' Fri Jan 31 09:40:22 CST 2014 suy $'
+echo $idstr
 
 if [ $# -lt 1 ]
 then
@@ -46,15 +55,15 @@ NROI=`wc -l $roilist | gawk '{print $1}'`
 for (( i=1; i<=$NROI; i++ ))
 do
 	label=`gawk 'NR=='$i' {print $1}' $roilist`
-	suvrROI ${petid}_REF.tac ${petid}_${label}.tac $label $sf $ef ${petid}_${label}.suvr
-	
+	suvrROI ${petid}_REF.tac ${petid}_${label}.tac $label $sf $ef ${petid}_${label}.suvr || die "$program ERROR: suvrROI ${petid}_REF.tac ${petid}_${label}.tac $label $sf $ef ${petid}_${label}.suvr failed"
+
 	if (( rsfflag == 1 ))
 	then
-		suvrROI ${petid}_REF_RSF.tac ${petid}_${label}_RSF.tac $label $sf $ef ${petid}_${label}_RSF.suvr
+		suvrROI ${petid}_REF_RSF.tac ${petid}_${label}_RSF.tac $label $sf $ef ${petid}_${label}_RSF.suvr || die "$program ERROR: suvrROI ${petid}_REF_RSF.tac ${petid}_${label}_RSF.tac $label $sf $ef ${petid}_${label}_RSF.suvr failed"
 	fi
 	if (( pvc2cflag == 1 ))
 	then
-		suvrROI ${petid}_REF_PVC2C.tac ${petid}_${label}_PVC2C.tac $label $sf $ef ${petid}_${label}_PVC2C.suvr
+		suvrROI ${petid}_REF_PVC2C.tac ${petid}_${label}_PVC2C.tac $label $sf $ef ${petid}_${label}_PVC2C.suvr || die "$program ERROR: suvrROI ${petid}_REF_PVC2C.tac ${petid}_${label}_PVC2C.tac $label $sf $ef ${petid}_${label}_PVC2C.suvr failed"
 	fi
 done
 
@@ -66,6 +75,6 @@ for (( i=0; i<4; i++ ))
 do
 	cp ${petid}_on_roi.4dfp.${ext[$i]} ${petid}_SUVR.4dfp.${ext[$i]}
 done
-scale_4dfp ${petid}_SUVR $scf
-gauss_4dfp ${petid}_SUVR 0.8
+scale_4dfp ${petid}_SUVR $scf || die "$program ERROR: scale_4dfp ${petid}_SUVR $scf failed"
+gauss_4dfp ${petid}_SUVR 0.8 || die "$program ERROR: gauss_4dfp ${petid}_SUVR 0.8 failed"
 

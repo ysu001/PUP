@@ -24,12 +24,21 @@
 #									       #
 ################################################################################
 # Yi Su, 12/24/2013
+VERSION=1.1
 
-idstr='$Id: fspreproc,v 1.1 Mon Feb  3 09:45:25 CST 2014 suy $'
+if [ "$1" == "--version" ]; then
+    echo $VERSION
+    exit 0
+fi
 
-echo $idstr
+die(){
+    echo >&2 "$@"
+    exit -1
+}
 
 program=`basename $0`
+idstr='$Id: '$program',v '$VERSION' Mon Feb  3 09:45:25 CST 2014 suy $'
+echo $idstr
 
 if [ $# -lt 1 ]
 then
@@ -49,8 +58,8 @@ source $paramsfn
 cp $fsdir/$t1 .
 cp $fsdir/$wmparc .
 
-mgzto4dfp $t1
-mgzto4dfp $wmparc
+mgzto4dfp $t1 || die "$program ERROR: mgzto4dfp $t1 failed"
+mgzto4dfp $wmparc || die "$program ERROR: mgzto4dfp $wmparc failed"
 
 mrroot=${t1%.*}
 mrroot=${mrroot}001
@@ -59,20 +68,20 @@ wmparcroot=${wmparcroot}001
 
 ###############################################################################
 # Processing freesurfer rois, whole head roi, and prepare for roi analysis
-if [ ! -e ${mrroot}"_g9.4dfp.img" ] 
+if [ ! -e ${mrroot}"_g9.4dfp.img" ]
 then
-	gauss_4dfp ${mrroot} 0.9
+	gauss_4dfp ${mrroot} 0.9 || die "$program ERROR: gauss_4dfp ${mrroot} 0.9 failed"
 fi
-maskimg_4dfp -v1 -t15 ${mrroot}_g9  ${mrroot}_g9 Head_Mask
-PreprocessRSFtest2 $wmparcroot Head_Mask  $roiimg $rsflist $fslut
+maskimg_4dfp -v1 -t15 ${mrroot}_g9  ${mrroot}_g9 Head_Mask || die "$program ERROR: maskimg_4dfp -v1 -t15 ${mrroot}_g9  ${mrroot}_g9 Head_Mask failed"
+PreprocessRSFtest2 $wmparcroot Head_Mask  $roiimg $rsflist $fslut || die "$program ERROR: PreprocessRSFtest2 $wmparcroot Head_Mask  $roiimg $rsflist $fslut failed"
 if (( rsfflag != 1 ))
 then
-	rsf2roilist $rsflist $fslut $roilist
+	rsf2roilist $rsflist $fslut $roilist || die "$program ERROR: rsf2roilist $rsflist $fslut $roilist failed"
 fi
 
 if (( pvc2cflag == 1 ))
 then
-	fs2brain $wmparcroot
+	fs2brain $wmparcroot || die "$program ERROR: fs2brain $wmparcroot failed"
 fi
 
 ###############################################################################

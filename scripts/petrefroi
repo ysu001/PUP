@@ -7,12 +7,21 @@
 #                                                                              #
 ################################################################################
 # Yi Su, 01/08/2014
+VERSION=1.1
 
-idstr='$Id: petrefroi,v 1.1 Mon Feb  3 09:46:07 CST 2014 suy $'
+if [ "$1" == "--version" ]; then
+    echo $VERSION
+    exit 0
+fi
 
-echo $idstr
+die(){
+    echo >&2 "$@"
+    exit -1
+}
 
 program=`basename $0`
+idstr='$Id: '$program',v '$VERSION' Mon Feb  3 09:46:07 CST 2014 suy $'
+echo $idstr
 
 if [ $# -lt 1 ]
 then
@@ -31,26 +40,26 @@ source $paramsfn
 ###############################################################################
 if (( FS == 1 ))
 then
-	fsrefroi $petid $roilist $refroistr .tac
+	fsrefroi $petid $roilist $refroistr .tac || die "$program ERROR: fsrefroi $petid $roilist $refroistr .tac failed"
 	if (( rsfflag == 1 ))
 	then
-		fsrefroi $petid $roilist $refroistr _RSF.tac
+		fsrefroi $petid $roilist $refroistr _RSF.tac || die "$program ERROR: fsrefroi $petid $roilist $refroistr _RSF.tac failed"
 	fi
 	if (( pvc2cflag == 1 ))
 	then
-		fsrefroi $petid $roilist $refroistr _PVC2C.tac
+		fsrefroi $petid $roilist $refroistr _PVC2C.tac || die "$program ERROR: fsrefroi $petid $roilist $refroistr _PVC2C.tac failed"
 	fi
-	
+
 fi
 
 if (( tgflag == 1 ))
 then
-	fsrefroi $petid $roilist $refroistr .tac
+	fsrefroi $petid $roilist $refroistr .tac || die "$program ERROR: fsrefroi $petid $roilist $refroistr .tac failed"
 fi
 
 if (( tgflag == 2 ))
 then
-	fsrefroi $petid $roilist $refroistr .tac
+	fsrefroi $petid $roilist $refroistr .tac || die "$program ERROR: fsrefroi $petid $roilist $refroistr .tac failed"
 fi
 
 ###############################################################################
@@ -59,5 +68,3 @@ fi
 
 
 ###############################################################################
-
-exit $?

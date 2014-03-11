@@ -1,17 +1,31 @@
 #!/bin/bash
-idstr='$Id: mgzto4dfp,v 1.2 2012/08/21 21:11:02 suy Exp $'
+
+VERSION=1.2
+
+if [ "$1" == "--version" ]; then
+    echo $VERSION
+    exit 0
+fi
+
+die(){
+    echo >&2 "$@"
+    exit -1
+}
+
+program=`basename $0`
+idstr='$Id: '$program',v '$VERSION' 2012/08/21 21:11:02 suy Exp $'
 echo $idstr
 
 
 if [ $# -lt 1 ]
 then
 	echo "Usage:	"`basename $0`" mgzfile"
-	exit 1
+	exit -1
 fi
 
 mgzfn=$1
 mgzbase=`basename $mgzfn`
 mgzroot=${mgzbase%.*}
-$FREESURFER_HOME/bin/mri_convert ${mgzroot}.mgz ${mgzroot}.nii
-nifti_4dfp -4 -N ${mgzroot} ${mgzroot}001
+$FREESURFER_HOME/bin/mri_convert ${mgzroot}.mgz ${mgzroot}.nii || die "$program ERROR: mri convert failed"
+nifti_4dfp -4 -N ${mgzroot} ${mgzroot}001 || die "$program ERROR: 4dfp conversion failed"
 

@@ -7,12 +7,21 @@
 #                                                                              #
 ################################################################################
 # Yi Su, 01/08/2014
+VERSION=1.1
 
-idstr='$Id: petloganrep,v 1.1 Mon Feb  3 09:45:58 CST 2014 suy $'
+if [ "$1" == "--version" ]; then
+    echo $VERSION
+    exit 0
+fi
 
-echo $idstr
+die(){
+    echo >&2 "$@"
+    exit -1
+}
 
 program=`basename $0`
+idstr='$Id: '$program',v '$VERSION' Mon Feb  3 09:45:58 CST 2014 suy $'
+echo $idstr
 
 if [ $# -lt 1 ]
 then
@@ -31,26 +40,26 @@ source $paramsfn
 ###############################################################################
 if (( FS == 1 ))
 then
-	fslogansum $petid $roisfn .mdl .txt
+	fslogansum $petid $roisfn .mdl .txt || die "$program ERROR: fslogansum $petid $roisfn .mdl .txt failed"
 	if (( rsfflag == 1 ))
 	then
-		fslogansum $petid $roisfn _RSF.mdl _RSF.txt
+		fslogansum $petid $roisfn _RSF.mdl _RSF.txt || die "$program ERROR: fslogansum $petid $roisfn _RSF.mdl _RSF.txt failed"
 	fi
 	if (( pvc2cflag == 1 ))
 	then
-		fslogansum $petid $roisfn _PVC2C.mdl _PVC2C.txt
+		fslogansum $petid $roisfn _PVC2C.mdl _PVC2C.txt || die "$program ERROR: fslogansum $petid $roisfn _PVC2C.mdl _PVC2C.txt failed"
 	fi
-	
+
 fi
 
 if (( tgflag == 1 ))
 then
-	roilogansum $petid $roilist .mdl .txt
+	roilogansum $petid $roilist .mdl .txt || die "$program ERROR: roilogansum $petid $roilist .mdl .txt failed"
 fi
 
 if (( tgflag == 2 ))
 then
-	roilogansum $petid $roilist .mdl .txt
+	roilogansum $petid $roilist .mdl .txt || die "$program ERROR: roilogansum $petid $roilist .mdl .txt failed"
 fi
 ###############################################################################
 # Additional ROI target based processing will be included in the future
@@ -58,5 +67,3 @@ fi
 
 
 ###############################################################################
-
-exit $?

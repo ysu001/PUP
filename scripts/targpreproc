@@ -7,12 +7,21 @@
 #                                                                              #
 ################################################################################
 # Yi Su, 01/08/2014
+VERSION=1.1
 
-idstr='$Id: targpreproc,v 1.1 Mon Feb  3 09:46:36 CST 2014 suy $'
+if [ "$1" == "--version" ]; then
+    echo $VERSION
+    exit 0
+fi
 
-echo $idstr
+die(){
+    echo >&2 "$@"
+    exit -1
+}
 
 program=`basename $0`
+idstr='$Id: '$program',v '$VERSION' Mon Feb  3 09:46:36 CST 2014 suy $'
+echo $idstr
 
 if [ $# -lt 1 ]
 then
@@ -34,7 +43,7 @@ source $paramsfn
 # files into 4dfp format, and prepares for ROI analysis.
 if (( FS == 1 ))
 then
-	fspreproc $paramsfn
+	fspreproc $paramsfn || die "$program ERROR: fspreproc $paramsfn failed"
 fi
 
 # PET ATLAS based processing. The preprocessing step populates PET atlas
@@ -42,17 +51,16 @@ fi
 # for ROI analysis.
 if (( tgflag == 1 ))
 then
-	petatlpreproc $paramsfn
+	petatlpreproc $paramsfn || die "$program ERROR: petatlpreproc $paramsfn failed"
 fi
 
-# MR ATLAS based processing. The preprocessing step converts MR images to 
-# 4dfp format and register it to atlas space. The ROIs are defined in the 
+# MR ATLAS based processing. The preprocessing step converts MR images to
+# 4dfp format and register it to atlas space. The ROIs are defined in the
 # atlas space. It can be standard template ROIs or manually defined ROIs.
 if (( tgflag == 2 ))
 then
-	mratlpreproc $paramsfn
+	mratlpreproc $paramsfn || die "$program ERROR: mratlpreproc $paramsfn failed"
 fi
 ###############################################################################
 # Additional ROI target based processing is under development
 
-exit 0
