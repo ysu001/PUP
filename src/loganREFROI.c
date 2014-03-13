@@ -51,14 +51,18 @@ int main(int argc, char **argv)
 	strcpy(optfn, argv[7]); 
 	
 	/* Read TACs */
-	readtac(reftacfn, reftac, st, frd, &nv, &nframes);
-	readtac(roitacfn, roitac, st, frd, &nv, &nframes);
+	readtac(reftacfn, reftac, frd, st, &nv, &nframes);
+	readtac(roitacfn, roitac, frd, st, &nv, &nframes);
 
 	/* Calculate BP using logan reference tissue model */
 	for (i=0; i<nframes; i++)
 	{
 		t[i]=st[i]+frd[i]/2.-st[0];
+/*		printf("%f\n",t[i]); */
 	}
+/*	printf("%d\t%d\t%d\n",nframes,sf,ef);*/
+
+
 	bp=loganREF(reftac, roitac, k2, t, frd, nframes, sf, ef, &intc, &slope, &rsq);
 
 	/* Write Output */

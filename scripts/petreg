@@ -73,7 +73,7 @@ source $paramsfn
 # Perform registration
 if (( tgflag == 1 ))
 then
-	pet2petatl $refimg ${petid}_sumall $rmf $maskfile $mmf $mbf $modf || die "$program ERROR: pet2petatl $refimg ${petid}_sumall $rmf $maskfile $mmf $mbf $modf failed"
+	pet2petatl $refimg ${petid}_sumall $rmf $mmf $mbf $modf || die "$program ERROR: pet2petatl $refimg ${petid}_sumall $rmf $mmf $mbf $modf failed"
 else
 	if [ -n "$rmf" ] && [ -n "$maskfile" ]
 	then

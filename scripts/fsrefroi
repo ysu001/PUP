@@ -60,7 +60,7 @@ then
 		(( nvref+=$nv ))
 	done
 	printf "%9s %15s %15s %15s %15s %10d\n" "Frame_#" "Start_Time_(s)" "Duration_(s)"  "Mean" "NVoxels=" $nvref > ${tacfn}
-	frames=`wc -l ${petid}_${label}.tac | gawk '{print $1}'`
+	frames=`wc -l ${petid}_${label}${tacpostfix} | gawk '{print $1}'`
 
 	for (( f=2; f<=$frames; f++ ))
 	do
