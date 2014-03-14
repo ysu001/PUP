@@ -1,0 +1,96 @@
+#!/bin/bash
+################################################################################
+# merge two roi TACs into one to create costum ROI TAC		 	       #
+#                                   				               #
+# USAGE:								       #
+#	petmergeroi petid roi1str roi2str outroistr tacpostfix                 #
+#	petid:	petid is a string associated with the file name PET data in    #
+#               4dfp format.						       #
+#	roi1str:   the name of first ROI to be combined			       #
+#	roi2str:   the name of second ROI to be combined		       #
+#	outroistr:   the name of output ROI to be combined		       #
+#	tacpostfix: postfix for the tac file, standard postfix is ".tac", it   #
+#		    could have extra strings, for example the postfix for an   #
+#		    RSF corrected tac is "_RSF.tac". The TAC file for a        #
+#		    specific ROI and dataset would follow the naming convention#
+#		    ${petid}_${ROINAME}${tacpostfix}			       #
+#									       #
+# The output of this program is the reference ROI TAC file		       #
+################################################################################
+# Yi Su, 03/13/2014
+
+VERSION=1.0
+if [ "$1" == "--version" ]; then
+    echo $VERSION
+    exit 0
+fi
+
+die(){
+    echo >&2 "$@"
+    exit -1
+}
+
+idstr='$Id: petmergeroi,v '$VERSION' 2014/03/13 18:07:48 suy Exp $'
+
+echo $idstr
+
+program=`basename $0`
+
+if [ $# -lt 5 ]
+then
+	echo "Usage: $program petid roi1str roi2str outroistr tacpostfix"
+	exit -1
+fi
+
+petid=$1
+roi1str=$2
+roi2str=$3
+outroistr=$4
+tacpostfix=$5
+
+###############################################################################
+tacfn=${petid}_${outroistr}${tacpostfix}
+
+# Check input ROIs
+roi1fn=${petid}_${roi1str}${tacpostfix}
+roi2fn=${petid}_${roi2str}${tacpostfix}
+if [ -e $roi1fn ] 
+then
+	echo $roi1fn check. OK
+else
+	die "$program ERROR: $roi1fn does not exist"
+fi
+if [ -e $roi2fn ] 
+then
+	echo $roi2fn check. OK
+else
+	die "$program ERROR: $roi2fn does not exist"
+fi
+
+# Calculate total ROI size
+nvref=0
+nv=`gawk 'NR==1 {print $6}' ${roi1fn}`
+(( nvref+=$nv ))
+nv=`gawk 'NR==1 {print $6}' ${roi2fn}`
+(( nvref+=$nv ))
+
+printf "%9s %15s %15s %15s %15s %10d\n" "Frame_#" "Start_Time_(s)" "Duration_(s)"  "Mean" "NVoxels=" $nvref > ${tacfn}
+frames=`wc -l ${roi1fn} | gawk '{print $1}'`
+
+for (( f=2; f<=$frames; f++ ))
+do		
+	nv1=`gawk 'NR==1 {print $6}' ${roi1fn}`
+	rv1=`gawk 'NR=='$f' {print $4}' ${roi1fn}`
+	
+	nv2=`gawk 'NR==1 {print $6}' ${roi2fn}`
+	rv2=`gawk 'NR=='$f' {print $4}' ${roi2fn}`
+
+	meanv=$(echo "scale=8; ($nv1*$rv1+$nv2*$rv2)/$nvref" | bc)
+
+	(( l=$f-1 ))
+	ts=`gawk 'NR=='$f' {print $2}'  ${roi1fn}`
+	td=`gawk 'NR=='$f' {print $3}'  ${roi1fn}`
+	printf "%9d %15f %15f %15f\n" $l $ts $td $meanv >> $tacfn
+done
+
+exit 0	

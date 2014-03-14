@@ -3,43 +3,69 @@
 # Summarize FreeSurfer Based PET loganREF ROI analysis			       #
 #                                   				               #
 # USAGE:								       #
-#	fslogansum petid roisfn loganpostfix sumpostfix                        #
-#	petid:	petid is a string associated with the file name PET data in    #
-#               4dfp format.						       #
-#	roisfn:	the text file that lists ROIs to be reported                   #
-#	loganpostfix: postfix for the mdl file, standard postfix is ".mdl", it #
-#		      could have extra strings, for example the postfix for an #
-#		      RSF corrected tac is "_RSF.mdl". The bp file for a     #
-#		      specific ROI and dataset would follow the naming	       #
-#		      convention: ${petid}_${ROINAME}${loganpostfix}	       #
-#	sumpostfix:  postfix for the output file, standard postfix is	       #
-#		     ".txt", it could have extra strings, for example the      #
-#		     postfix for an RSF corrected opt is "_RSF.txt". 	       #
-#		     The opt file follow the naming convention: 	       #
-#				${petid}_LOGAN${sumpostfix}		       #
-#			and	${petid}_LOGAN${sumpostfix}		       #
+#	fslogansum paramsfn postfix					       #
 #									       #
 # The output of this program is a text file that summarizes the modeling       #
 # outputs								       #
 ################################################################################
 # Yi Su, 01/08/2014
 
-idstr='$Id: fslogansum,v 1.0 2014/01/08 18:07:48 suy Exp $'
+VERSION=1.1
+
+if [ "$1" == "--version" ]; then
+    echo $VERSION
+    exit 0
+fi
+
+die(){
+    echo >&2 "$@"
+    exit -1
+}
+
+idstr='$Id: fslogansum,v '$VERSION' 2014/03/14 18:07:48 suy Exp $'
 
 echo $idstr
 
 program=`basename $0`
 
-if [ $# -lt 4 ]
+if [ $# -lt 2 ]
 then
-	echo "Usage: $program petid roisfn loganpostfix sumpostfix"
+	echo "Usage: $program paramsfn postfix"
 	exit -1
 fi
 
-petid=$1
-roisfn=$2
-loganpostfix=$3
-sumpostfix=$4
+paramsfn=$1
+postfix=$2
+
+###############################################################################
+# Read PARAMS file
+source $paramsfn
+
+# Further development will improve this program to check the validity of
+# the inputs specified in the params file
+
+###############################################################################
+# Process input
+case "$postfix" in
+     "none" )
+	tacpostfix=".tac"
+	loganpostfix=".mdl"
+	sumpostfix=".txt"
+	;;
+     "_RSF" )
+	tacpostfix="_RSF.tac"
+	loganpostfix="_RSF.mdl"
+	sumpostfix="_RSF.txt"
+	;;
+     "_PVC2C" )
+	tacpostfix="_PVC2C.tac"
+	loganpostfix="_PVC2C.mdl"
+	sumpostfix="_PVC2C.txt"
+	;;
+     * )
+	die "Unsupported postfix $postfix"
+	;;
+esac	
 
 optfn=${petid}_LOGAN${sumpostfix}
 optlrfn=${petid}_LOGANLR${sumpostfix}
@@ -68,7 +94,7 @@ do
 			lrsq=0
 			lintc=0
 		fi
-		printf "%-35s %11d %11.4f %11.4f %11.4f\n" Left-${ROI} $lnv $lbp $lrsq $lintc>> $optlrfn
+		printf "%-35s %11d %11.4f %11.7f %11.4f\n" Left-${ROI} $lnv $lbp $lrsq $lintc>> $optlrfn
 
 		rfn=${petid}_Right-${ROI}${loganpostfix}
 		if [ -e $rfn ]
@@ -83,13 +109,26 @@ do
 			rrsq=0
 			rintc=0
 		fi
-		printf "%-35s %11d %11.4f %11.4f %11.4f\n" Right-${ROI} $rnv $rbp $rrsq $rintc>> $optlrfn
-
-		bp=$(echo "scale=6; ($lbp*$lnv+$rbp*$rnv)/($lnv+$rnv+.0001)" | bc)
-		(( nv=$lnv+$rnv ))
-		rsq=$(echo "scale=6; ($lrsq*$lnv+$rrsq*$rnv)/($lnv+$rnv+.0001)" | bc)
-		intc=$(echo "scale=6; ($lintc*$lnv+$rintc*$rnv)/($lnv+$rnv+.0001)" | bc)
-		printf "%-35s %11d %11.4f %11.4f %11.4f\n" ${ROI} $nv $bp $rsq $intc >> $optfn
+		printf "%-35s %11d %11.4f %11.7f %11.4f\n" Right-${ROI} $rnv $rbp $rrsq $rintc>> $optlrfn
+		if [ -e $rfn ]
+		then
+			# combine left and right ROI
+			petmergeroi $petid Left-${ROI} Right-${ROI} $ROI $tacpostfix || die "petmergeroi $petid Left-${ROI} Right-${ROI} $ROI $tacpostfix failed"
+		
+			# calculating BP for combined ROI
+			loganREFROI ${petid}_REF${tacpostfix} ${petid}_${ROI}${tacpostfix} ${ROI} $k2 $sf $ef ${petid}_${ROI}${loganpostfix} || die "loganREFROI ${petid}_REF${tacpostfix} ${petid}_${ROI}${tacpostfix} ${ROI} $k2 $sf $ef ${petid}_${ROI}${loganpostfix} failed"
+			# output ROI values
+			nv=`gawk 'NR==3 {print $2}'  ${petid}_${ROI}${loganpostfix}`
+			bp=`gawk 'NR==3 {print $3}'  ${petid}_${ROI}${loganpostfix}`
+			rsq=`gawk 'NR==3 {print $4}' ${petid}_${ROI}${loganpostfix}`
+			intc=`gawk 'NR==3 {print $5}'  ${petid}_${ROI}${loganpostfix}`
+		else
+			nv=0
+			bp=0
+			rsq=0
+			intc=0
+		fi
+		printf "%-35s %11d %11.4f %11.7f %11.4f\n" ${ROI} $nv $bp $rsq $intc >> $optfn
 
 	elif (( $flag == 0 ))
 	then
@@ -106,8 +145,8 @@ do
 			rsq=0
 			intc=0
 		fi
-		printf "%-35s %11d %11.4f %11.4f %11.4f\n" ${ROI} $nv $bp $rsq $intc >> $optfn
-		printf "%-35s %11d %11.4f %11.4f %11.4f\n" ${ROI} $nv $bp $rsq $intc >> $optlrfn
+		printf "%-35s %11d %11.4f %11.7f %11.4f\n" ${ROI} $nv $bp $rsq $intc >> $optfn
+		printf "%-35s %11d %11.4f %11.7f %11.4f\n" ${ROI} $nv $bp $rsq $intc >> $optlrfn
 
 	elif (( $flag == 2 ))
 	then
@@ -125,7 +164,7 @@ do
 			lrsq=0
 			lintc=0
 		fi
-		printf "%-35s %11d %11.4f %11.4f %11.4f\n" ctx-lh-${ROI} $lnv $lbp $lrsq $lintc>> $optlrfn
+		printf "%-35s %11d %11.4f %11.7f %11.4f\n" ctx-lh-${ROI} $lnv $lbp $lrsq $lintc>> $optlrfn
 
 		rfn=${petid}"_ctx-rh-"${ROI}${loganpostfix}
 		if [ -e $rfn ]
@@ -140,14 +179,27 @@ do
 			rrsq=0
 			rintc=0
 		fi
-		printf "%-35s %11d %11.4f %11.4f %11.4f\n" ctx-rh-${ROI} $rnv $rbp $rrsq $rintc>> $optlrfn
+		printf "%-35s %11d %11.4f %11.7f %11.4f\n" ctx-rh-${ROI} $rnv $rbp $rrsq $rintc>> $optlrfn
 
-		bp=$(echo "scale=6; ($lbp*$lnv+$rbp*$rnv)/($lnv+$rnv+.0001)" | bc)
-		rsq=$(echo "scale=6; ($lrsq*$lnv+$rrsq*$rnv)/($lnv+$rnv+.0001)" | bc)
-		intc=$(echo "scale=6; ($lintc*$lnv+$rintc*$rnv)/($lnv+$rnv+.0001)" | bc)
-		(( nv=$lnv+$rnv ))
-		printf "%-35s %11d %11.4f %11.4f %11.4f\n" ctx-${ROI} $nv $bp $rsq $intc>> $optfn
-		
+		if [ -e $rfn ]
+		then
+			# combine left and right ROI
+			petmergeroi $petid ctx-lh-${ROI} ctx-rh-${ROI} ctx-${ROI} $tacpostfix || die "petmergeroi $petid ctx-lh-${ROI} ctx-rh-${ROI} ctx-${ROI} $tacpostfix failed"
+			# calculating BP for combined ROI
+			loganREFROI ${petid}_REF${tacpostfix} ${petid}_ctx-${ROI}${tacpostfix} ctx-${ROI} $k2 $sf $ef ${petid}_ctx-${ROI}${loganpostfix} || die "loganREFROI ${petid}_REF${tacpostfix} ${petid}_ctx-${ROI}${tacpostfix} ctx-${ROI} $k2 $sf $ef ${petid}_ctx-${ROI}${loganpostfix} failed"
+			# output ROI values
+			nv=`gawk 'NR==3 {print $2}'  ${petid}_ctx-${ROI}${loganpostfix}`
+			bp=`gawk 'NR==3 {print $3}'  ${petid}_ctx-${ROI}${loganpostfix}`
+			rsq=`gawk 'NR==3 {print $4}' ${petid}_ctx-${ROI}${loganpostfix}`
+			intc=`gawk 'NR==3 {print $5}'  ${petid}_ctx-${ROI}${loganpostfix}`
+		else
+			nv=0
+			bp=0
+			rsq=0
+			intc=0
+		fi
+		printf "%-35s %11d %11.4f %11.7f %11.4f\n" ctx-${ROI} $nv $bp $rsq $intc >> $optfn
+
 		# Cortical White
 		lfn=${petid}"_wm-lh-"${ROI}${loganpostfix}
 		if [ -e $lfn ]
@@ -162,7 +214,7 @@ do
 			lrsq=0
 			lintc=0
 		fi
-		printf "%-35s %11d %11.4f %11.4f %11.4f\n" wm-lh-${ROI} $lnv $lbp $lrsq $lintc >> wmlr$$.txt
+		printf "%-35s %11d %11.4f %11.7f %11.4f\n" wm-lh-${ROI} $lnv $lbp $lrsq $lintc >> wmlr$$.txt
 
 		rfn=${petid}"_wm-rh-"${ROI}${loganpostfix}
 		if [ -e $rfn ]
@@ -177,13 +229,26 @@ do
 			rrsq=0
 			rintc=0
 		fi
-		printf "%-35s %11d %11.4f %11.4f %11.4f\n" wm-rh-${ROI} $rnv $rbp $rrsq $rintc >> wmlr$$.txt
+		printf "%-35s %11d %11.4f %11.7f %11.4f\n" wm-rh-${ROI} $rnv $rbp $rrsq $rintc >> wmlr$$.txt
 
-		bp=$(echo "scale=6; ($lbp*$lnv+$rbp*$rnv)/($lnv+$rnv+.0001)" | bc)
-		rsq=$(echo "scale=6; ($lrsq*$lnv+$rrsq*$rnv)/($lnv+$rnv+.0001)" | bc)
-		intc=$(echo "scale=6; ($lintc*$lnv+$rintc*$rnv)/($lnv+$rnv+.0001)" | bc)
-		(( nv=$lnv+$rnv ))
-		printf "%-35s %11d %11.4f %11.4f %11.4f\n" wm-${ROI} $nv $bp $rsq $intc >> wm$$.txt
+		if [ -e $rfn ]
+		then
+			# combine left and right ROI
+			petmergeroi $petid wm-lh-${ROI} wm-rh-${ROI} wm-${ROI} $tacpostfix || die "petmergeroi $petid wm-lh-${ROI} wm-rh-${ROI} wm-${ROI} $tacpostfix failed"
+			# calculating BP for combined ROI
+			loganREFROI ${petid}_REF${tacpostfix} ${petid}_wm-${ROI}${tacpostfix} wm-${ROI} $k2 $sf $ef ${petid}_wm-${ROI}${loganpostfix}|| die "loganREFROI ${petid}_REF${tacpostfix} ${petid}_wm-${ROI}${tacpostfix} wm-${ROI} $k2 $sf $ef ${petid}_wm-${ROI}${loganpostfix} failed"
+			# output ROI values
+			nv=`gawk 'NR==3 {print $2}'  ${petid}_wm-${ROI}${loganpostfix}`
+			bp=`gawk 'NR==3 {print $3}'  ${petid}_wm-${ROI}${loganpostfix}`
+			rsq=`gawk 'NR==3 {print $4}' ${petid}_wm-${ROI}${loganpostfix}`
+			intc=`gawk 'NR==3 {print $5}'  ${petid}_wm-${ROI}${loganpostfix}`
+		else
+			nv=0
+			bp=0
+			rsq=0
+			intc=0
+		fi
+		printf "%-35s %11d %11.4f %11.7f %11.4f\n" wm-${ROI} $nv $bp $rsq $intc >> wm$$.txt
 	fi
 done
 cat wm$$.txt >> $optfn
@@ -195,72 +260,58 @@ rm wmlr$$.txt
 # Calculate MCBP
 
 # GR
-n1=`gawk '/ctx-lateralorbitofrontal/ {print $2}' $optfn`
-v1=`gawk '/ctx-lateralorbitofrontal/ {print $3}' $optfn`
-rsq1=`gawk '/ctx-lateralorbitofrontal/ {print $4}' $optfn`
-intc1=`gawk '/ctx-lateralorbitofrontal/ {print $5}' $optfn`
-
-n2=`gawk '/ctx-medialorbitofrontal/ {print $2}' $optfn`
-v2=`gawk '/ctx-medialorbitofrontal/ {print $3}' $optfn`
-rsq2=`gawk '/ctx-medialorbitofrontal/ {print $4}' $optfn`
-intc2=`gawk '/ctx-medialorbitofrontal/ {print $5}' $optfn`
-
-nv=$(echo "scale=8; $n1+$n2" | bc)
-bp=$(echo "scale=8; $v1*$n1/$nv+$v2*$n2/$nv" | bc)
-rsq=$(echo "scale=8; $rsq1*$n1/$nv+$rsq2*$n2/$nv" | bc)
-intc=$(echo "scale=8; $intc1*$n1/$nv+$intc2*$n2/$nv" | bc)
- 
-printf "%-35s %11d %11.4f %11.4f %11.4f\n" GR_FS $nv $bp $rsq $intc >> $optfn
+# combine ROIs
+petmergeroi $petid ctx-lateralorbitofrontal ctx-medialorbitofrontal GR_FS $tacpostfix || die "petmergeroi $petid ctx-lateralorbitofrontal ctx-medialorbitofrontal GR_FS $tacpostfix failed"
+# calculating BP for combined ROI
+loganREFROI ${petid}_REF${tacpostfix} ${petid}_GR_FS${tacpostfix} GR_FS $k2 $sf $ef ${petid}_GR_FS${loganpostfix} || die "loganREFROI ${petid}_REF${tacpostfix} ${petid}_GR_FS${tacpostfix} GR_FS $k2 $sf $ef ${petid}_GR_FS${loganpostfix} failed"
+# output ROI values
+nv=`gawk 'NR==3 {print $2}'  ${petid}_GR_FS${loganpostfix}`
+bp=`gawk 'NR==3 {print $3}'  ${petid}_GR_FS${loganpostfix}`
+rsq=`gawk 'NR==3 {print $4}' ${petid}_GR_FS${loganpostfix}`
+intc=`gawk 'NR==3 {print $5}'  ${petid}_GR_FS${loganpostfix}`
+printf "%-35s %11d %11.4f %11.7f %11.4f\n" GR_FS $nv $bp $rsq $intc >> $optfn
 N=$nv
 MC=$bp
 
 
 # TEMP
-n1=`gawk '/ctx-middletemporal/ {print $2}' $optfn`
-v1=`gawk '/ctx-middletemporal/ {print $3}' $optfn`
-rsq1=`gawk '/ctx-middletemporal/ {print $4}' $optfn`
-intc1=`gawk '/ctx-middletemporal/ {print $5}' $optfn`
-n2=`gawk '/ctx-superiortemporal/ {print $2}' $optfn`
-v2=`gawk '/ctx-superiortemporal/ {print $3}' $optfn`
-rsq2=`gawk '/ctx-superiortemporal/ {print $4}' $optfn`
-intc2=`gawk '/ctx-superiortemporal/ {print $5}' $optfn`
-nv=$(echo "scale=8; $n1+$n2" | bc)
-bp=$(echo "scale=8; $v1*$n1/$nv+$v2*$n2/$nv" | bc)
-rsq=$(echo "scale=8; $rsq1*$n1/$nv+$rsq2*$n2/$nv" | bc)
-intc=$(echo "scale=8; $intc1*$n1/$nv+$intc2*$n2/$nv" | bc)
-printf "%-35s %11d %11.4f %11.4f %11.4f\n" TEMP_FS $nv $bp $rsq $intc >> $optfn
+# combine ROIs
+petmergeroi $petid ctx-middletemporal ctx-superiortemporal TEMP_FS $tacpostfix || die "petmergeroi $petid ctx-middletemporal ctx-superiortemporal TEMP_FS $tacpostfix failed"
+# calculating BP for combined ROI
+loganREFROI ${petid}_REF${tacpostfix} ${petid}_TEMP_FS${tacpostfix} TEMP_FS $k2 $sf $ef ${petid}_TEMP_FS${loganpostfix} || die "loganREFROI ${petid}_REF${tacpostfix} ${petid}_TEMP_FS${tacpostfix} TEMP_FS $k2 $sf $ef ${petid}_TEMP_FS${loganpostfix} failed"
+# output ROI values
+nv=`gawk 'NR==3 {print $2}'  ${petid}_TEMP_FS${loganpostfix}`
+bp=`gawk 'NR==3 {print $3}'  ${petid}_TEMP_FS${loganpostfix}`
+rsq=`gawk 'NR==3 {print $4}' ${petid}_TEMP_FS${loganpostfix}`
+intc=`gawk 'NR==3 {print $5}'  ${petid}_TEMP_FS${loganpostfix}`
+printf "%-35s %11d %11.4f %11.7f %11.4f\n" TEMP_FS $nv $bp $rsq $intc >> $optfn
 MC=$(echo "scale=8; $bp+$MC" | bc)
 N=$(echo "scale=8; $nv+$N" | bc)
 
 # OCC
-n1=`gawk '/ctx-cuneus/ {print $2}' $optfn`
-v1=`gawk '/ctx-cuneus/ {print $3}' $optfn`
-rsq1=`gawk '/ctx-cuneus/ {print $4}' $optfn`
-intc1=`gawk '/ctx-cuneus/ {print $5}' $optfn`
-n2=`gawk '/ctx-lingual/ {print $2}' $optfn`
-v2=`gawk '/ctx-lingual/ {print $3}' $optfn`
-rsq2=`gawk '/ctx-lingual/ {print $4}' $optfn`
-intc2=`gawk '/ctx-lingual/ {print $5}' $optfn`
-nv=$(echo "scale=8; $n1+$n2" | bc)
-bp=$(echo "scale=8; $v1*$n1/$nv+$v2*$n2/$nv" | bc)
-rsq=$(echo "scale=8; $rsq1*$n1/$nv+$rsq2*$n2/$nv" | bc)
-intc=$(echo "scale=8; $intc1*$n1/$nv+$intc2*$n2/$nv" | bc)
-printf "%-35s %11d %11.4f %11.4f %11.4f\n" OCC_FS $nv $bp  $rsq $intc>> $optfn
+# combine ROIs
+petmergeroi $petid ctx-cuneus ctx-lingual OCC_FS $tacpostfix || die "petmergeroi $petid ctx-cuneus ctx-lingual OCC_FS $tacpostfix failed"
+# calculating BP for combined ROI
+loganREFROI ${petid}_REF${tacpostfix} ${petid}_OCC_FS${tacpostfix} OCC_FS $k2 $sf $ef ${petid}_OCC_FS${loganpostfix} || die "loganREFROI ${petid}_REF${tacpostfix} ${petid}_OCC_FS${tacpostfix} OCC_FS $k2 $sf $ef ${petid}_OCC_FS${loganpostfix} failed"
+# output ROI values
+nv=`gawk 'NR==3 {print $2}'  ${petid}_OCC_FS${loganpostfix}`
+bp=`gawk 'NR==3 {print $3}'  ${petid}_OCC_FS${loganpostfix}`
+rsq=`gawk 'NR==3 {print $4}' ${petid}_OCC_FS${loganpostfix}`
+intc=`gawk 'NR==3 {print $5}'  ${petid}_OCC_FS${loganpostfix}`
+printf "%-35s %11d %11.4f %11.7f %11.4f\n" OCC_FS $nv $bp $rsq $intc >> $optfn
 
 # PREF
-n1=`gawk '/ctx-rostralmiddlefrontal/ {print $2}' $optfn`
-v1=`gawk '/ctx-rostralmiddlefrontal/ {print $3}' $optfn`
-rsq1=`gawk '/ctx-rostralmiddlefrontal/ {print $4}' $optfn`
-intc1=`gawk '/ctx-rostralmiddlefrontal/ {print $5}' $optfn`
-n2=`gawk '/ctx-superiorfrontal/ {print $2}' $optfn`
-v2=`gawk '/ctx-superiorfrontal/ {print $3}' $optfn`
-rsq2=`gawk '/ctx-superiorfrontal/ {print $4}' $optfn`
-intc2=`gawk '/ctx-superiorfrontal/ {print $5}' $optfn`
-nv=$(echo "scale=8; $n1+$n2" | bc)
-bp=$(echo "scale=8; $v1*$n1/$nv+$v2*$n2/$nv" | bc)
-rsq=$(echo "scale=8; $rsq1*$n1/$nv+$rsq2*$n2/$nv" | bc)
-intc=$(echo "scale=8; $intc1*$n1/$nv+$intc2*$n2/$nv" | bc)
-printf "%-35s %11d %11.4f %11.4f %11.4f\n" PREF_FS $nv $bp $rsq $intc >> $optfn
+# combine ROIs
+petmergeroi $petid ctx-rostralmiddlefrontal ctx-superiorfrontal PREF_FS $tacpostfix || die "petmergeroi $petid ctx-rostralmiddlefrontal ctx-superiorfrontal PREF_FS $tacpostfix failed"
+# calculating BP for combined ROI
+loganREFROI ${petid}_REF${tacpostfix} ${petid}_PREF_FS${tacpostfix} PREF_FS $k2 $sf $ef ${petid}_PREF_FS${loganpostfix} || die "loganREFROI ${petid}_REF${tacpostfix} ${petid}_PREF_FS${tacpostfix} PREF_FS $k2 $sf $ef ${petid}_PREF_FS${loganpostfix} failed"
+# output ROI values
+nv=`gawk 'NR==3 {print $2}'  ${petid}_PREF_FS${loganpostfix}`
+bp=`gawk 'NR==3 {print $3}'  ${petid}_PREF_FS${loganpostfix}`
+rsq=`gawk 'NR==3 {print $4}' ${petid}_PREF_FS${loganpostfix}`
+intc=`gawk 'NR==3 {print $5}'  ${petid}_PREF_FS${loganpostfix}`
+printf "%-35s %11d %11.4f %11.7f %11.4f\n" PREF_FS $nv $bp $rsq $intc >> $optfn
+
 MC=$(echo "scale=8; $bp+$MC" | bc)
 N=$(echo "scale=8; $nv+$N" | bc)
 
@@ -270,6 +321,6 @@ bp=`gawk '/ctx-precuneus/ {print $3}' $optfn`
 MC=$(echo "scale=8; $bp+$MC" | bc)
 N=$(echo "scale=8; $nv+$N" | bc)
 MC=$(echo "scale=8; $MC/4" | bc)
-printf "%-35s %11d %11.4f %11.4f %11.4f\n" MC $N $MC 0 0 >> $optfn
+printf "%-35s %11d %11.4f %11.7f %11.4f\n" MC $N $MC 0 0 >> $optfn
 
 

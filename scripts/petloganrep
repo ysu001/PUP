@@ -20,7 +20,7 @@ die(){
 }
 
 program=`basename $0`
-idstr='$Id: '$program',v '$VERSION' Mon Feb  3 09:45:58 CST 2014 suy $'
+idstr='$Id: '$program',v '$VERSION' Fri Mar 14 09:45:58 CST 2014 suy $'
 echo $idstr
 
 if [ $# -lt 1 ]
@@ -40,14 +40,14 @@ source $paramsfn
 ###############################################################################
 if (( FS == 1 ))
 then
-	fslogansum $petid $roisfn .mdl .txt || die "$program ERROR: fslogansum $petid $roisfn .mdl .txt failed"
+	fslogansum $paramsfn none || die "$program ERROR: fslogansum $paramsfn none failed"
 	if (( rsfflag == 1 ))
 	then
-		fslogansum $petid $roisfn _RSF.mdl _RSF.txt || die "$program ERROR: fslogansum $petid $roisfn _RSF.mdl _RSF.txt failed"
+		fslogansum $paramsfn _RSF || die "$program ERROR: fslogansum $paramsfn _RSF failed"
 	fi
 	if (( pvc2cflag == 1 ))
 	then
-		fslogansum $petid $roisfn _PVC2C.mdl _PVC2C.txt || die "$program ERROR: fslogansum $petid $roisfn _PVC2C.mdl _PVC2C.txt failed"
+		fslogansum $paramsfn _PVC2C || die "$program ERROR: fslogansum $paramsfn _PVC2C failed"
 	fi
 
 fi
