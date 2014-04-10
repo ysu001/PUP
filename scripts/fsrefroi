@@ -20,11 +20,21 @@
 ################################################################################
 # Yi Su, 01/03/2014
 
-idstr='$Id: fsrefroi,v 1.0 2014/01/03 18:07:48 suy Exp $'
+VERSION=1.0
 
-echo $idstr
+if [ "$1" == "--version" ]; then
+    echo $VERSION
+    exit 0
+fi
+
+die(){
+    echo >&2 "$@"
+    exit -1
+}
 
 program=`basename $0`
+idstr='$Id: '$program',v '$VERSION' 2014/01/03 18:07:48 suy $'
+echo $idstr
 
 if [ $# -lt 4 ]
 then
@@ -56,9 +66,13 @@ then
 	for (( i=1; i<=$nref; i++ ))
 	do
 		label=`gawk 'NR=='$i' {print $1}' reflist.txt`
-		nv=`gawk 'NR==1 {print $6}' ${petid}_${label}${tacpostfix}` 
+		nv=`gawk 'NR==1 {print $6}' ${petid}_${label}${tacpostfix}`
 		(( nvref+=$nv ))
 	done
+	if (( $nvref == 0 ))
+	then
+		die "$program ERROR: REF NVoxels=0; must be > 0."
+	fi
 	printf "%9s %15s %15s %15s %15s %10d\n" "Frame_#" "Start_Time_(s)" "Duration_(s)"  "Mean" "NVoxels=" $nvref > ${tacfn}
 	frames=`wc -l ${petid}_${label}${tacpostfix} | gawk '{print $1}'`
 
@@ -81,4 +95,4 @@ then
 		printf "%9d %15f %15f %15f\n" $l $ts $td $meanv >> $tacfn
 	done
 fi
-exit 0	
+exit 0
