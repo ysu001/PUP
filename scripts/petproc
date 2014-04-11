@@ -33,7 +33,7 @@ paramsfn=$1
 
 ###############################################################################
 # Read PARAMS file
-source $paramsfn
+source $paramsfn || die "$program ERROR: Cannot source params file $paramsfn"
 
 # Further development will improve this program to check the validity of
 # the inputs specified in the params file

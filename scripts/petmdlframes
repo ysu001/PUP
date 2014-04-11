@@ -15,6 +15,11 @@
 ################################################################################
 # Yi Su, 01/03/2014
 
+die(){
+    echo >&2 "$@"
+    exit -1
+}
+
 idstr='$Id: petmdlframes,v 1.0 2014/01/03 18:07:48 suy Exp $'
 
 echo $idstr
@@ -30,7 +35,7 @@ fi
 paramsfn=$1
 ###############################################################################
 # Read PARAMS file
-source $paramsfn
+source $paramsfn || die "$program ERROR: Cannot source params file $paramsfn"
 
 # Further development will improve this program which checks the validity of
 # the inputs specified in the params file
