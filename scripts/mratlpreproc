@@ -51,48 +51,82 @@ source $paramsfn || die "$program ERROR: Cannot source params file $paramsfn"
 # the inputs specified in the params file
 
 ###############################################################################
-# Populate files
-
-dcm_to_4dfp -b ${mrid}S $mrdir/$mrfn || die "$program ERROR: DICOM to 4dfp conversion failed"
-
-# The MR is typically MPRAGE data acquired sagitally, will convert to
-# transverse first.
-ori=`gawk '/orientation/{print $NF}' ${mrid}S.4dfp.ifh`
-if (( ori == 2 ))
-then
-	ext=( img img.rec ifh hdr )
-	for (( i=0; i<4; i++ ))
-	do
-		cp ${mrid}S.4dfp.${ext[$i]} ${mrid}.4dfp.${ext[$i]}
-	done
-elif (( ori == 3 ))
-then
-	C2T_4dfp ${mrid}S ${mrid} || die "$program ERROR: C2T_4dfp ${mrid}S ${mrid} failed"
-elif (( ori == 4 ))
-then
-	S2T_4dfp ${mrid}S ${mrid} || die "$program ERROR: S2T_4dfp ${mrid}S ${mrid} failed"
-else
-	ERR="ERROR mratlpreproc: Wrong Orientation FLAG"
-	echo $ERR
-	die $program $ERR
-fi
-rm ${mrid}S.4dfp.*
+# Copy ROI files
 
 cp $roidir/${roiimg}.4dfp.* .
 cp $roidir/${roilist} .
 
 ###############################################################################
-# atlas registration
-mpr2atl_4dfp $mrid -T$atlpath/$atltarg || die "$program ERROR: atlas registration failed"
+# Check if MR has been pre-registered
 
-# generate brainmask
-msktgen_4dfp $mrid -T$atlpath/$atltarg || die "$program ERROR: brainmask generation failed"
+if [[ -e "${mrdir}/${mrid}_${mrscanid}_mpr_to_${atltarg}_t4" && -e "${mrdir}/${mrid}_${mrscanid}_mpr_mskt.4dfp.img" ]]; then
+    cp ${mrdir}/* .
 
-# populate maskfile parameter in the params file for further processing
-echo "maskfile=${mrid}_mskt.4dfp.img" >> $paramsfn
+    if [[ -z "$maskfile" ]]; then
+        # populate maskfile parameter in the params file for further processing
+        echo "maskfile=${mrid}_${mrscanid}_mpr_mskt.4dfp.img" >> $paramsfn
+    fi
+    if [[ -z "$atlt4" ]]; then
+        # set atlt4 in params file
+        echo "atlt4=${mrid}_${mrscanid}_mpr_to_${atltarg}_t4" >> $paramsfn
+    fi
+    if [[ -z "$refimg" ]]; then
+        # set refimg in params file
+        echo "refimg=${mrid}_${mrscanid}_mpr" >> $paramsfn
+    fi
 
-# set atlt4 in params file
-echo "atlt4=${mrid}_to_${atltarg}_t4" >> $paramsfn
 
-# set refimg in params file
-echo "refimg=${mrid}" >> $paramsfn
+else
+
+    ###############################################################################
+    # Populate files
+
+    dcm_to_4dfp -b ${mrid}S $mrdir/$mrfn || die "$program ERROR: DICOM to 4dfp conversion failed"
+
+    # The MR is typically MPRAGE data acquired sagitally, will convert to
+    # transverse first.
+    ori=`gawk '/orientation/{print $NF}' ${mrid}S.4dfp.ifh`
+    if (( ori == 2 ))
+    then
+        ext=( img img.rec ifh hdr )
+        for (( i=0; i<4; i++ ))
+        do
+            cp ${mrid}S.4dfp.${ext[$i]} ${mrid}.4dfp.${ext[$i]}
+        done
+    elif (( ori == 3 ))
+    then
+        C2T_4dfp ${mrid}S ${mrid} || die "$program ERROR: C2T_4dfp ${mrid}S ${mrid} failed"
+    elif (( ori == 4 ))
+    then
+        S2T_4dfp ${mrid}S ${mrid} || die "$program ERROR: S2T_4dfp ${mrid}S ${mrid} failed"
+    else
+        ERR="ERROR mratlpreproc: Wrong Orientation FLAG"
+        echo $ERR
+        die $program $ERR
+    fi
+    rm ${mrid}S.4dfp.*
+
+    ###############################################################################
+    # atlas registration
+    mpr2atl_4dfp $mrid -T$atlpath/$atltarg || die "$program ERROR: atlas registration failed"
+
+    # generate brainmask
+    msktgen_4dfp $mrid -T$atlpath/$atltarg || die "$program ERROR: brainmask generation failed"
+
+    ###############################################################################
+    # Populate parameters if they aren't defined already
+
+    if [[ -z "$maskfile" ]]; then
+        # populate maskfile parameter in the params file for further processing
+        echo "maskfile=${mrid}_mskt.4dfp.img" >> $paramsfn
+    fi
+    if [[ -z "$atlt4" ]]; then
+        # set atlt4 in params file
+        echo "atlt4=${mrid}_to_${atltarg}_t4" >> $paramsfn
+    fi
+    if [[ -z "$refimg" ]]; then
+        # set refimg in params file
+        echo "refimg=${mrid}" >> $paramsfn
+    fi
+
+fi
