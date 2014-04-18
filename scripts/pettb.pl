@@ -54,11 +54,16 @@ while ($i < $total-1) {
 	push(@array3, $sum);
 }
 
+my $start = 0;
 foreach my $element (@array3){
 	my $ceil = $element/$constant;
 	$ceil= ceil($ceil);
+	if (($ceil - $start) > 1){
+		$ceil = $start + 1;
+	}
 	push(@array4, $ceil);
 	print $outfile2 "$ceil\n";
+	$start = $ceil;
 }
 
 $i = 0;
