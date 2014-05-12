@@ -56,7 +56,7 @@ source $paramsfn
 # File conversion
 if (( $format == 0 ))
 then
-	dcm_pet -m -a  -b $petid $petdir/$petfn || die "$program ERROR: dcm_pet -m -a  -b $petid $petdir/$petfn failed"
+	dcm_pet -n -a  -b $petid $petdir/$petfn || die "$program ERROR: dcm_pet -n -a  -b $petid $petdir/$petfn failed"
 elif (( $format == 1 ))
 then
 	ecatto4dfp $petdir/$petfn $petid || die "$program ERROR: ecatto4dfp $petdir/$petfn $petid failed"
