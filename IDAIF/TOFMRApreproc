@@ -1,0 +1,115 @@
+#!/bin/bash
+#
+# Script to prepare TOFMRA data for IDAIF analysis
+#
+# Yi Su, 05/27/2014
+VERSION=1.0
+
+if [ "$1" == "--version" ]; then
+    echo $VERSION
+    exit 0
+fi
+
+die(){
+    echo >&2 "$@"
+    exit -1
+}
+
+program=`basename $0`
+idstr='$Id: '$program',v '$VERSION' 2014/05/28 19:39:08 CST 2014 suy $'
+echo $idstr
+
+if [ $# -lt 1 ]
+then
+	echo "Usage: $program paramsfn"
+	exit -1
+fi
+
+paramsfn=$1
+
+# Read PARAMS file
+source $paramsfn
+
+# Further development will improve this program which checks the validity of
+# the inputs specified in the params file
+
+TOFname=`basename $TOFfn`
+TOFdir=`dirname $TOFfn`
+TOFroot=${TOFname%%.*}
+
+mrroot=${t1%.*}
+mrroot=${mrroot}001
+
+ln -s $TOFdir/${TOFroot}.4dfp.* .
+echo "TOF= "$TOFroot
+echo "mr= "$mrroot
+
+
+# segment TOF-MRA
+emmraseg $TOFfn
+emmraabseg $TOFfn
+
+# gaussian blur arterial mask
+f_halfAIF=$(echo "scale=6; 4.412712/$fwhmAIF" | bc)
+gauss_4dfp TOF_ART $f_halfAIF TOF_ART_gAIF
+gauss_4dfp TOF_AB $f_halfAIF TOF_AB_gAIF
+
+# Register TOF to MR
+reg2img $mrroot $TOFroot
+
+# Transform TOF data to MR space
+t4img_4dfp ${TOFroot}_to_${mrroot}_t4 TOF_ART_gAIF TOF_ART_gAIF_on_MR -O${mrroot}
+t4img_4dfp ${TOFroot}_to_${mrroot}_t4 TOF_AB_gAIF TOF_AB_gAIF_on_MR -O${mrroot}
+t4img_4dfp ${TOFroot}_to_${mrroot}_t4 TOF_ART TOF_ART_on_MR -O${mrroot}
+
+# Find ART mask 
+genericAIFFOVloc=/data/nil-bluearc/raichle/suy/BrainIF/NP872_EV
+t4_inv ${mrroot}_to_${target}_t4 -u
+t4img_4dfp ${target}_to_${mrroot}_t4 $genericAIFFOVloc/genericAIFROIatl AIFFOV -O$mrroot -n
+maskimg_4dfp AIFFOV PETFOV AIFPETFOV
+maskimg_4dfp -t.5 AIFPETFOV TOF_ART_on_MR artm0 
+
+# Generate arterial mask
+t1=`findtroisize TOF_ART_gAIF_on_MR AIFPETFOV 16000`
+t2=`findtroisize TOF_ART_gAIF_on_MR AIFPETFOV 8000`
+t3=`findtroisize TOF_ART_gAIF_on_MR AIFPETFOV 100000`
+echo $t1 $t2 $t3
+maskimg_4dfp -t$t1 AIFPETFOV TOF_ART_gAIF_on_MR artm1
+maskimg_4dfp -t$t2 AIFPETFOV TOF_ART_gAIF_on_MR artm2
+imgopr_4dfp -sbartm1 artm1 artm2
+maskimg_4dfp -t$t3 AIFPETFOV TOF_ART_gAIF_on_MR artbig
+imgopr_4dfp -sbg1 artbig artm1
+
+a0PET=`qnt_4dfp TOF_ART_gAIF_on_MR artm0 | gawk '/Mean/ {print $2}'`
+b0PET=`qnt_4dfp TOF_AB_gAIF_on_MR artm0 | gawk '/Mean/ {print $2}'`
+
+a1PET=`qnt_4dfp TOF_ART_gAIF_on_MR artm1 | gawk '/Mean/ {print $2}'`
+a2PET=`qnt_4dfp TOF_ART_gAIF_on_MR artm2 | gawk '/Mean/ {print $2}'`
+a3PET=`qnt_4dfp TOF_ART_gAIF_on_MR bartm1 | gawk '/Mean/ {print $2}'`
+
+b1PET=`qnt_4dfp TOF_AB_gAIF_on_MR artm1 | gawk '/Mean/ {print $2}'`
+b2PET=`qnt_4dfp TOF_AB_gAIF_on_MR artm2 | gawk '/Mean/ {print $2}'`
+b3PET=`qnt_4dfp TOF_AB_gAIF_on_MR bartm1 | gawk '/Mean/ {print $2}'`
+
+if [ -e AIF_abPET.txt ]
+then
+	rm  AIF_abPET.txt
+fi
+touch AIF_abPET.txt
+printf "%16s%16s\n" Region RC >> AIF_abPET.txt
+printf "%16s%16f\n" ART0 $a0PET >> AIF_abPET.txt
+printf "%16s%16f\n" ART1 $a1PET >> AIF_abPET.txt
+printf "%16s%16f\n" ART2 $a2PET >> AIF_abPET.txt
+printf "%16s%16f\n" BART1 $a3PET >> AIF_abPET.txt
+
+
+if [ -e AIF_bPET.txt ]
+then
+	rm  AIF_bPET.txt
+fi
+touch AIF_bPET.txt
+printf "%16s%16s\n" Region RC >> AIF_bPET.txt
+printf "%16s%16f\n" ART0 $b0PET >> AIF_abPET.txt
+printf "%16s%16f\n" ART1 $b1PET >> AIF_bPET.txt
+printf "%16s%16f\n" ART2 $b2PET >> AIF_bPET.txt
+printf "%16s%16f\n" BART1 $b3PET >> AIF_bPET.txt
