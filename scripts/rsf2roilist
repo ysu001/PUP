@@ -16,10 +16,12 @@ touch $roilist
 for (( l=1; l<=$n; l++ ))
 do
 	label=`gawk 'NR=='$l' {print $1}' $rsflist`
-	nv=`gawk 'NR=='$l' {print $3}' $rsflist`	 
+	nv=`gawk 'NR=='$l' {print $3}' $rsflist`
+	x=`gawk 'NR=='$l' {print $2}' $rsflist`	 
 	val=`gawk '/ '$label' / {print $1}' $LKUP`
+	
 	if [ -n "$val" ]
 	then
-		echo $label $val $nv >>$roilist
+		echo $label $x $nv >>$roilist
 	fi
 done

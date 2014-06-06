@@ -48,6 +48,16 @@ source $paramsfn
 # Further development will improve this program which checks the validity of
 # the inputs specified in the params file
 
+###############################################################################
+# Handle Single Frame Data
+nf=`wc -l ${mocofn} | gawk '{print $1}'`
+if [ "$nf" -eq 1 ]
+then
+	echo "Single Frame Data"
+	exit
+fi
+
+
 # Sum PET frames
 sum_pet_4dfp ${petid}_moco $sf $ef -d -h${half_life} ${petid}_msum || die "$program ERROR: sum_pet_4dfp ${petid}_moco $sf $ef -d -h${half_life} ${petid}_msum failed"
 

@@ -54,6 +54,42 @@ source $paramsfn
 # the inputs specified in the params file
 
 ###############################################################################
+# Handle Single Frame Data
+nf=`wc -l ${petid}.info | gawk '{print $1}'`
+if [ "$nf" -eq 1 ]
+then
+	# Create sumall 4dfp ( as a copy of the original single frame data )
+	ext=( img img.rec ifh hdr )
+	for (( i=0; i<4; i++ ))
+	do
+		cp ${petid}.4dfp.${ext[$i]} ${petid}_sumall.4dfp.${ext[$i]}
+	done
+	
+	# Initialize FOV coverage
+	tv=`imgmax_4dfp -m ${petid}"_sumall" | gawk ' {print $2-1.0}'`
+	maskimg_4dfp -v1 -t${tv} ${petid}"_sumall" ${petid}"_sumall" temp$$ || die "$program ERROR: maskimg_4dfp failed"
+	nsl=`gawk '/matrix size \[3\]/ {print $NF}' ${petid}"_sumall.4dfp.ifh"`
+	zero_slice_4dfp temp$$ z 1 3  temp$$"_mskz" || die "$program ERROR: zero_slice_4dfp failed"
+	tv=`imgmax_4dfp -m ${mrroot} | gawk ' {print $2-1.0}'`
+	k=$((nsl-2))
+	zero_slice_4dfp temp$$"_mskz" z $k $nsl  temp$$"_msk" || die "$program ERROR: zero_slice_4dfp failed"
+	cp temp$$"_msk".4dfp.img petfov.4dfp.img
+	cp temp$$"_msk".4dfp.ifh petfov.4dfp.ifh
+	cp temp$$"_msk".4dfp.hdr petfov.4dfp.hdr
+	cp temp$$"_msk".4dfp.img.rec petfov.4dfp.img.rec
+	
+	# Generate moco text files
+	echo "1	1" > ${petid}.tb
+	echo "1" > ${petid}.f2tb
+
+	# Copy Identity Matrix as the moco t4
+	cp ${RELEASE}/T_t4 ${petid}_tb1_to_${petid}_sumall_t4
+	echo ${petid}_tb1_to_${petid}_sumall_t4 > ${petid}_mocot4.lst
+	echo "mocofn=${petid}_mocot4.lst" >> $paramsfn
+	exit 
+fi
+
+###############################################################################
 # Generate time bin range
 pettb.pl -infile ${petid}.info -constant $tbl -output ${petid}.tb -output2 ${petid}_f2tb.lst || die "$program ERROR: pettb.pl -infile ${petid}.info -constant $tbl -output ${petid}.tb -output2 ${petid}_f2tb.lst failed"
 
@@ -69,7 +105,6 @@ done
 
 ###############################################################################
 # Create sumall 4dfp
-nf=`wc -l ${petid}.info | gawk '{print $1}'`
 sum_pet_4dfp ${petid} 1 $nf -d -h${half_life} ${petid}_sumall || die "$program ERROR: sum_pet_4dfp ${petid} 1 $nf -d -h${half_life} ${petid}_sumall failed"
 
 ###############################################################################
@@ -85,6 +120,24 @@ cp temp$$"_msk".4dfp.img petfov.4dfp.img
 cp temp$$"_msk".4dfp.ifh petfov.4dfp.ifh
 cp temp$$"_msk".4dfp.hdr petfov.4dfp.hdr
 cp temp$$"_msk".4dfp.img.rec petfov.4dfp.img.rec
+
+###############################################################################
+# Handle cases when there is more than one frame but only one time bin
+if [ "$ntb" -eq 1 ]
+then
+	# Copy Identity Matrix as the moco t4
+	cp ${RELEASE}/T_t4 ${petid}_tb1_to_${petid}_sumall_t4
+	if [ -e ${petid}_mocot4.lst ]
+	then
+		rm ${petid}_mocot4.lst
+	fi
+	for (( i=1; i<=nf; i++ ))
+	do
+		echo ${petid}_tb1_to_${petid}_sumall_t4 >> ${petid}_mocot4.lst
+	done	
+	echo "mocofn=${petid}_mocot4.lst" >> $paramsfn
+	exit
+fi
 
 ###############################################################################
 # Register each time bin to the sumall and generate combined FOV coverage
