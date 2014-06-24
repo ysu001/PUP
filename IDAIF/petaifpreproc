@@ -1,17 +1,15 @@
 #!/bin/bash
 ################################################################################
-# PET file preprocessing to generate 4dfp format PET data for further analysis #
-# using PET processing pipelines.                                              #
+# PET file preprocessing to prepare 4dfp format PET data for further analysis  #
+# using IDAIF PET processing pipelines.                                        #
 #                                                                              #
 # USAGE:								       #
-#	petpreproc paramsfn                                                    #
+#	petaifpreproc paramsfn                                                 #
 #                                                                              #
 # This script reads a params file that includes:                               #
 # 	petdir:	absolute path of the pet data location	 	               #
-#	petfn:	file name of the pet data				       #
-#		for DICOM data, petfn = "*.dcm" or "*.ima"                     #
-#		for ecat data, petfn = ???.v                                   #
-#               for Siemens InterFile Format data, petfn = ???.mhdr            #
+#	petid:	file name (root name ) of the pet data			       #
+#		Assuming 4dfp conversion has been done already		       #
 #	format: original format of pet data                                    #
 #		format = 0 (DICOM) 					       #
 #		format = 1 (ecat)					       #
@@ -22,7 +20,7 @@
 # The output of this program would be a 4dfp quadruplet and a .info file that  #
 # contains the frame timing and decay correction info.                         #
 ################################################################################
-# Yi Su, 11/05/2013
+# Yi Su, 05/28/2014
 VERSION=1.0
 
 if [ "$1" == "--version" ]; then
@@ -48,22 +46,17 @@ fi
 paramsfn=$1
 
 # Read PARAMS file
-source $paramsfn || die "$program ERROR: Cannot source params file $paramsfn"
+source $paramsfn
 
 # Further development will improve this program which checks the validity of
 # the inputs specified in the params file
 
-# File conversion
-if (( $format == 0 ))
-then
-	dcm_pet -n -a  -b $petid $petdir/$petfn || die "$program ERROR: dcm_pet -n -a  -b $petid $petdir/$petfn failed"
-elif (( $format == 1 ))
-then
-	ecatto4dfp $petdir/$petfn $petid || die "$program ERROR: ecatto4dfp $petdir/$petfn $petid failed"
-elif (( $format == 2 ))
-then
-	sif_4dfp $petdir/$petfn $petid || die "$program ERROR: sif_4dfp $petdir/$petfn $petid failed"
-fi
+# Copy files
+cp $petdir/${petid}.4dfp.* .
+cp $petdir/PETFOV.4dfp.* .
+mrroot=${t1%.*}
+mrroot=${mrroot}001
+cp $petdir/$mrtoatlt4 ${mrroot}_to_${target}_t4 
 
 # Generate .info file
 PETinfo $petid $format $delay || die "$program ERROR: PETinfo $petid $format $delay failed"
@@ -107,5 +100,6 @@ then
 	echo $ERR
 	die "$program ERROR: $ERR"
 fi
-
-
+pet2roit4=${petid}_to_MR_t4
+cp $petdir/$pettomrt4 $pet2roit4
+echo "pet2roit4=${pet2roit4}" >> $paramsfn

@@ -1,0 +1,44 @@
+#!/bin/bash
+# Program for automated TOF-MRA segmentation using EM algorithm on a slice by 
+# slice basis. This is a matlab program wrapper.
+# Algorithm adapted from Wilson & Noble, IEEE TMI 1999 18(10) 938-945. 
+#
+# Yi Su, 2014-05-27
+
+idstr='$Id: emmraseg,v 1.2 2014/05/27 11:51:57 suy Exp $'
+echo $idstr
+
+if (( $# < 1 )) 
+then
+	echo "Usage: `basename $0` TOFfstr (4dfp file)"
+	exit 255
+fi
+
+TOFfstr=$1 # 4dfp file
+TOFdir=`dirname $TOFfstr`
+TOFname=`basename $TOFfstr`
+TOFroot=${TOFname%%.*}
+
+
+
+# Prepare .m file 
+
+mfile=${TOFroot}"_emseg.m"
+if [ -e $mfile ] 
+then
+	rm $mfile
+fi
+touch $mfile
+echo "addpath('"$MLCDIR"');" >>$mfile #addpath
+echo "emartv1('"$TOFfstr"', 6, 4, 100, 50, 300, 100);" >>$mfile
+
+
+#-----------------------------------------------------------------------------------------------------------------------#
+#--Execute matlab file -------------------------------------------------------------------------------------------------#
+$MLBIN/matlab -nojvm -nodisplay < $mfile > /dev/null
+rm $mfile
+
+cluster_4dfp TOF_ART -n100 -R
+rm TOF_ART.4dfp.*
+maskimg_4dfp TOF_ART_ROI TOF_ART_ROI TOF_ART -v1
+

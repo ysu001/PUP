@@ -33,6 +33,22 @@ then
 fi
 touch $petroot".info"
 
+fd=`gawk '/Frame_1 / {print $2/1000}' $petdir"/"$petroot".4dfp.img.rec"`
+dc=`gawk '/Frame_1 / {print $7}' $petdir"/"$petroot".4dfp.img.rec"`
+if (( $format == 1 ))
+then
+	st0=`gawk '/Frame_1 / {print $4/1000}' $petdir"/"$petroot".4dfp.img.rec"`
+elif (( $format == 0 ))
+then
+	t=`gawk '/Frame_1 / {print $3}' $petdir"/"$petroot".4dfp.img.rec"`
+	st0=$(echo "scale=8; $t-$fd/2" | bc)	
+elif (( $format == 2 ))
+then
+	t=`gawk '/Frame_1 / {print $3}' $petdir"/"$petroot".4dfp.img.rec"`
+	st0=$(echo "scale=8; $t-$fd/2" | bc)
+fi
+
+
 for (( f=1; f<=$frames; f++ ))
 do
 	fd=`gawk '/Frame_'$f' / {print $2/1000}' $petdir"/"$petroot".4dfp.img.rec"`
@@ -50,8 +66,8 @@ do
 		t=`gawk '/Frame_'$f' / {print $3}' $petdir"/"$petroot".4dfp.img.rec"`
 		st=$(echo "scale=8; $t-$fd/2" | bc)
 	fi
-	st=$(echo "scale=8; $st+$delay" |bc)
-	t=$(echo "scale=8; $t+$delay" |bc)	
+	st=$(echo "scale=8; $st-$st0+$delay" |bc)
+	t=$(echo "scale=8; $t-$st0+$delay" |bc)	
 	printf '%f\t%f\t%f\t%f\t%d\n' $st $t $fd $dc $f >> $petroot".info"
 done
 

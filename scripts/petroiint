@@ -52,6 +52,16 @@ source $paramsfn || die "$program ERROR: Cannot source params file $paramsfn"
 
 # Further development will improve this program which checks the validity of
 # the inputs specified in the params file
+###############################################################################
+# Handle Single Frame Data
+nf=`wc -l ${mocofn} | gawk '{print $1}'`
+if [ "$nf" -eq 1 ]
+then
+	echo "Single Frame Data"
+	t4img_4dfp $pet2roit4 $petid ${petid}_on_roi -O${roiimg} || die "$program ERROR: t4img_4dfp $pet2roit4 $petid ${petid}_on_roi -O${roiimg} failed"
+	exit
+fi
+
 NROI=`wc -l $roilist | gawk '{print $1}'`
 ###############################################################################
 # RSF preprocessing if requested

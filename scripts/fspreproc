@@ -74,10 +74,10 @@ then
 fi
 maskimg_4dfp -v1 -t15 ${mrroot}_g9  ${mrroot}_g9 Head_Mask || die "$program ERROR: maskimg_4dfp -v1 -t15 ${mrroot}_g9  ${mrroot}_g9 Head_Mask failed"
 PreprocessRSFtest2 $wmparcroot Head_Mask  $roiimg $rsflist $fslut || die "$program ERROR: PreprocessRSFtest2 $wmparcroot Head_Mask  $roiimg $rsflist $fslut failed"
-if (( rsfflag != 1 ))
-then
-	rsf2roilist $rsflist $fslut $roilist || die "$program ERROR: rsf2roilist $rsflist $fslut $roilist failed"
-fi
+#if (( rsfflag != 1 ))
+#then
+#	rsf2roilist $rsflist $fslut $roilist || die "$program ERROR: rsf2roilist $rsflist $fslut $roilist failed"
+#fi
 
 if (( pvc2cflag == 1 ))
 then

@@ -40,6 +40,18 @@ source $paramsfn || die "$program ERROR: Cannot source params file $paramsfn"
 # Further development will improve this program which checks the validity of
 # the inputs specified in the params file
 
+# Handle Single Frame Data
+nf=`wc -l ${mocofn} | gawk '{print $1}'`
+if [ "$nf" -eq 1 ]
+then
+	ef=1
+	sf=1
+
+	echo "sf=$sf" >> $paramsfn
+	echo "ef=$ef" >> $paramsfn
+	exit
+
+fi
 
 ###############################################################################
 nf=`wc -l ${petid}.info | gawk '{print $1}'`

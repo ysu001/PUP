@@ -1,0 +1,187 @@
+#!/bin/bash
+################################################################################
+# PET roi tac extraction. This program generates ROI TAC curves based on input #
+# PET data and ROI data. It also generates TACs for ROIs used for estimating   #
+# image-derived arterial input function (IDAIF)				       #
+#                                   				               #
+# USAGE:								       #
+#	petaiftac paramsfn                                                     #
+#                                                                              #
+# This script reads a params file that includes:                               #
+#	petid:	petid is a string associated with the file name PET data in    #
+#               4dfp format.						       #
+#	roiimg: roiimg is a string associated with the file name of the        #
+#		roi definetion image in 4dfp format.			       #
+#	roilist:the text file that lists ROI names and corresponding roi label #
+#               in the roiimg file                                             #
+#	mocofn: file name of the text file which specifies the motion 	       #
+#		correction transformation t4s.				       #
+#	pet2roit4: the t4 file that specifies the transformation from PET      #
+#		   space to roi space                                          #
+#	fwhm:	PET resolution in mm					       #
+#	rsfflag: whether RSF PVC will be performed			       #
+#	pvc2cflag: whether PVC2C will be performed			       #
+#									       #
+#									       #
+# The output of this program is a series of TAC curves			       #
+################################################################################
+# Yi Su, 12/23/2013
+VERSION=1.0
+
+if [ "$1" == "--version" ]; then
+    echo $VERSION
+    exit 0
+fi
+
+die(){
+    echo >&2 "$@"
+    exit -1
+}
+
+program=`basename $0`
+idstr='$Id: '$program',v '$VERSION' Fri Jan 31 09:40:11 CST 2014 suy $'
+echo $idstr
+
+if [ $# -lt 1 ]
+then
+	echo "Usage: $program paramsfn"
+	exit -1
+fi
+
+paramsfn=$1
+###############################################################################
+# Read PARAMS file
+source $paramsfn
+
+# Further development will improve this program which checks the validity of
+# the inputs specified in the params file
+NROI=`wc -l $roilist | gawk '{print $1}'`
+
+###############################################################################
+# Prepare ROI TAC files for IDAIF estimation
+if [ -e ${petid}_art0.tac ]
+then
+	rm ${petid}_art0.tac
+fi
+touch ${petid}_art0.tac
+if [ -e ${petid}_art1.tac ]
+then
+	rm ${petid}_art1.tac
+fi
+touch ${petid}_art1.tac
+if [ -e ${petid}_art2.tac ]
+then
+	rm ${petid}_art2.tac
+fi
+touch ${petid}_art2.tac
+if [ -e ${petid}_bart1.tac ]
+then
+	rm ${petid}_bart1.tac
+fi
+touch ${petid}_bart1.tac
+if [ -e ${petid}_WB.tac ]
+then
+	rm ${petid}_WB.tac
+fi
+touch ${petid}_WB.tac
+
+###############################################################################
+# RSF preprocessing if requested
+if (( rsfflag == 1 ))
+then
+	echo 1
+	calrsfmat $roiimg $roilist RSFMat.dat $fwhm || die "$program ERROR: calrsfmat $roiimg $roilist RSFMat.dat $fwhm failed"
+fi
+
+###############################################################################
+# PVC2C preprocessing if requested
+if (( pvc2cflag == 1 ))
+then
+	imgblur_4dfp BrainMask $fwhm || die "$program ERROR: imgblur_4dfp BrainMask $fwhm failed"
+	bx=`echo $fwhm | awk '{print 10*$1}'`
+	bstr="_b"$bx
+	roieval3 BrainMask${bstr} $roiimg PETFOV $roilist $NROI pvc2c 0 || die "$program ERROR: roieval3 BrainMask${bstr} $roiimg PETFOV $roilist $NROI pvc2c 0 failed"
+	mv pvc2c_ROI2_f0 pvc2c.txt
+fi
+echo 2
+###############################################################################
+# Find whole brain mask
+t=`gawk '/Right-UnsegmentedWhiteMatter/ {print $2}' ${roilist}`
+t=$(echo "scale=3; $t+0.5" |bc)
+zero_gt_4dfp $t $roiimg
+maskimg_4dfp  PETFOV ${roiimg}z WBMask
+rm ${roiimg}z.*
+echo 3
+###############################################################################
+# Perform ROI analysis frame by frame
+frames=`wc -l $mocofn | gawk '{print $1}'`
+
+for (( f=1; f<=frames; f++ ))
+do
+	chop_4dfp ${petid} $f $f -o${petid}"_"$f || die "$program ERROR: chop_4dfp ${petid} $f $f -o${petid}_$f failed"
+	t4moco=`sed $f'q;d' $mocofn`
+	t4_mul $t4moco $pet2roit4 frame2roit4 || die "$program ERROR: t4_mul $t4moco $pet2roit4 frame2roit4 failed"
+	t4img_4dfp frame2roit4 ${petid}"_"$f ${petid}"_"$f"_on_roi" -O${roiimg} || die "$program ERROR: t4img_4dfp frame2roit4 ${petid}_$f ${petid}_$f_on_roi -O${roiimg} failed"
+	if (( rsfflag == 1 ))
+	then
+		rsfroieval2 ${petid}"_"$f"_on_roi" $roiimg RSFMat.dat PETFOV $roilist $NROI 10 ${petid} $f || die "$program ERROR: rsfroieval2 ${petid}_$f_on_roi $roiimg RSFMat.dat PETFOV $roilist $NROI 10 ${petid} $f failed"
+	else
+		roieval3 ${petid}"_"$f"_on_roi" $roiimg PETFOV $roilist $NROI ${petid} $f || die "$program ERROR: roieval3 ${petid}_$f_on_roi $roiimg PETFOV $roilist $NROI ${petid} $f failed"
+	fi
+	qnt_4dfp ${petid}"_"$f"_on_roi" artm1 | gawk '/Mean/ {print $2}' >> ${petid}_art1.tac
+	qnt_4dfp ${petid}"_"$f"_on_roi" artm2 | gawk '/Mean/ {print $2}' >> ${petid}_art2.tac
+	qnt_4dfp ${petid}"_"$f"_on_roi" bartm1 | gawk '/Mean/ {print $2}' >> ${petid}_bart1.tac
+	qnt_4dfp ${petid}"_"$f"_on_roi" bg1 | gawk '/Mean/ {print $2}' >> ${petid}_bg1.tac
+	qnt_4dfp ${petid}"_"$f"_on_roi" WBMask | gawk '/Mean/ {print $2}' >> ${petid}_WB.tac
+	qnt_4dfp ${petid}"_"$f"_on_roi" artm0 | gawk '/Mean/ {print $2}' >> ${petid}_art0.tac
+	rm ${petid}"_"${f}.*
+	rm ${petid}"_"${f}_on_roi.*
+done
+echo 4
+###############################################################################
+# Generate ROI TACs
+for (( i=1; i<=NROI; i++ ))
+do
+	(( l = i + 1 ))
+	label=`gawk 'NR=='$i' {print $1}' $roilist`
+	echo "label = ${label}"
+	tacfn=${petid}_${label}.tac
+	rsftacfn=${petid}_${label}_RSF.tac
+	pvc2ctacfn=${petid}_${label}_PVC2C.tac
+
+	NVOX=`gawk 'NR=='$l' {print $2}' ${petid}_ROI2_f1`
+	printf "%9s %15s %15s %15s %15s %10d\n" "Frame_#" "Start_Time_(s)" "Duration_(s)"  "Mean" "NVoxels=" $NVOX > $tacfn
+	if (( rsfflag == 1 ))
+	then
+		printf "%9s %15s %15s %15s %15s %10d\n" "Frame_#" "Start_Time_(s)" "Duration_(s)"  "Mean"  "NVoxels=" $NVOX > $rsftacfn
+	fi
+	if (( pvc2cflag == 1 ))
+	then
+		printf "%9s %15s %15s %15s %15s %10d\n" "Frame_#" "Start_Time_(s)" "Duration_(s)"  "Mean"  "NVoxels=" $NVOX > $pvc2ctacfn
+	fi
+
+	for (( f=1; f<=frames; f++ ))
+	do
+		framefn=${petid}"_ROI2_f"$f
+		rsffn=${petid}"_RSF_ROI2_f"$f
+		ts=`gawk 'NR=='$f' {print $1}'  ${petid}".info"`
+		td=`gawk 'NR=='$f' {print $3}'  ${petid}".info"`
+		meanroi=`gawk 'NR=='$l' {print $3}' $framefn`
+		printf "%9d %15f %15f %15f\n" $f $ts $td $meanroi >> $tacfn
+		if (( rsfflag == 1 ))
+		then
+			meanroirsf=`gawk 'NR=='$l' {print $3}' $rsffn`
+			printf "%9d %15f %15f %15f\n" $f $ts $td $meanroirsf >> $rsftacfn
+		fi
+
+		if (( pvc2cflag == 1 ))
+		then
+			cf=`gawk '/'$label'/ {print $3}' pvc2c.txt`
+			meanroipvc2c=$(echo "scale=8; $meanroi/($cf+0.00001)" | bc)
+			printf "%9d %15f %15f %15f\n" $f $ts $td $meanroipvc2c >> $pvc2ctacfn
+		fi
+
+	done
+
+done
+

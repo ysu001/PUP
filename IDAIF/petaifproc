@@ -1,0 +1,69 @@
+#!/bin/bash
+################################################################################
+# PET processing							       #
+#                                                                              #
+# USAGE:								       #
+#	petaifproc paramsfn                                                    #
+#                                                                              #
+# This script reads a params file for IDAIF PET processing                     #
+################################################################################
+# Yi Su, 05/28/2014
+VERSION=1.0
+if [ "$1" == "--version" ]; then
+    echo $VERSION
+    exit 0
+fi
+
+die(){
+    echo >&2 "$@"
+    exit -1
+}
+
+program=`basename $0`
+idstr='$Id: '$program',v '$VERSION' Wed May 28 09:41:55 CST 2014 suy $'
+echo $idstr
+
+if [ $# -lt 1 ]
+then
+	echo "Usage: $program paramsfn"
+	exit -1
+fi
+
+paramsfn=$1
+
+###############################################################################
+# Read PARAMS file
+source $paramsfn
+
+# Further development will improve this program to check the validity of
+# the inputs specified in the params file
+
+mkdir pet_proc
+cp $paramsfn pet_proc
+cd pet_proc
+
+###############################################################################
+# Populate and preprocess PET files
+petaifpreproc $paramsfn || die "$program ERROR: PET file conversion failed"
+
+###############################################################################
+# PET motion correction
+petmoco $paramsfn || die "$program ERROR: PET motion correction failed"
+
+###############################################################################
+# ROI target preprocessing
+fspreproc $paramsfn || die "$program ERROR: ROI target preprocessing failed"
+
+###############################################################################
+# TOF MRA preprocessing
+TOFMRApreproc $paramsfn
+
+###############################################################################
+# PET to target space registration
+# Assuming PET to MR registration has been handled
+
+###############################################################################
+# ROI TAC extraction
+petaiftac $paramsfn || die "$program ERROR: ROI TAC extraction failed"
+
+
