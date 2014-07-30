@@ -13,7 +13,7 @@
 idstr='$Id: PETinfo,v 1.2 2013/10/11 21:11:00 suy Exp $'
 echo $idstr
 
-                                                            
+
 petfstr=$1
 petdir=`dirname $petfstr`
 petname=`basename $petfstr`
@@ -41,7 +41,7 @@ then
 elif (( $format == 0 ))
 then
 	t=`gawk '/Frame_1 / {print $3}' $petdir"/"$petroot".4dfp.img.rec"`
-	st0=$(echo "scale=8; $t-$fd/2" | bc)	
+	st0=$(echo "scale=8; $t-$fd/2" | bc)
 elif (( $format == 2 ))
 then
 	t=`gawk '/Frame_1 / {print $3}' $petdir"/"$petroot".4dfp.img.rec"`
@@ -60,14 +60,14 @@ do
 	elif (( $format == 0 ))
 	then
 		t=`gawk '/Frame_'$f' / {print $3}' $petdir"/"$petroot".4dfp.img.rec"`
-		st=$(echo "scale=8; $t-$fd/2" | bc)	
+		st=$(echo "scale=8; $t-$fd/2" | bc)
 	elif (( $format == 2 ))
 	then
 		t=`gawk '/Frame_'$f' / {print $3}' $petdir"/"$petroot".4dfp.img.rec"`
 		st=$(echo "scale=8; $t-$fd/2" | bc)
 	fi
-	st=$(echo "scale=8; $st-$st0+$delay" |bc)
-	t=$(echo "scale=8; $t-$st0+$delay" |bc)	
+	st=$(echo "scale=8; $st-($st0)+$delay" |bc)
+	t=$(echo "scale=8; $t-($st0)+$delay" |bc)
 	printf '%f\t%f\t%f\t%f\t%d\n' $st $t $fd $dc $f >> $petroot".info"
 done
 
