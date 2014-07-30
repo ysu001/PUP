@@ -71,10 +71,10 @@ source $paramsfn || die "$program ERROR: Cannot source params file $paramsfn"
 
 ###############################################################################
 # Perform registration
-if (( tgflag == 1 ))
+if (( tgflag == 1 )) # target is PET atlas
 then
 	pet2petatl $refimg ${petid}_sumall $rmf $mmf $mbf $modf || die "$program ERROR: pet2petatl $refimg ${petid}_sumall $rmf $mmf $mbf $modf failed"
-else
+else # target is patient MR (the most common case, i.e. FreeSurfer based processing)
 	if [ -n "$rmf" ] && [ -n "$maskfile" ]
 	then
 		reg2img $refimg ${petid}_sumall $rmf $maskfile $mmf $rbf $mbf $modf || die "$program ERROR: reg2img $refimg ${petid}_sumall $rmf $maskfile $mmf $rbf $mbf $modf failed"
@@ -104,6 +104,11 @@ else
 	fi
 fi
 
+# eliminating scale factor in the t4 file
+sed /scale:/d ${petid}_sumall_to_${refimg}_t4 tmpt4 || die "$program ERROR: sed /scale:/d ${petid}_sumall_to_${refimg}_t4 tmpt4 failed"
+cp tmpt4 ${petid}_sumall_to_${refimg}_t4 || die "$program ERROR: cp tmpt4 ${petid}_sumall_to_${refimg}_t4 failed"
+
+# target is in patient space and the reference image to atlas transformation is known (atlt4)
 if (( tgflag == 2 ))
 then
 	t4_mul ${petid}_sumall_to_${refimg}_t4 $atlt4 ${petid}_to_roi_t4 || die "$program ERROR: t4_mul ${petid}_sumall_to_${refimg}_t4 $atlt4 ${petid}_to_roi_t4 failed"
