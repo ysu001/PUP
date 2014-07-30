@@ -44,7 +44,7 @@ fi
 paramsfn=$1
 ###############################################################################
 # Read PARAMS file
-source $paramsfn
+source $paramsfn || die "$program ERROR: Cannot source params file $paramsfn"
 
 # Further development will improve this program which checks the validity of
 # the inputs specified in the params file
@@ -68,6 +68,10 @@ do
 done
 
 ref=`gawk 'NR==2 {print $4}' ${petid}_REF.tac`
+if (( $(bc <<< "$ref == 0" ) == 1 ))
+then
+    die "$program ERROR: ref=${ref}. Cannot calculate 1/ref."
+fi
 scf=$(echo "scale=8; 1/$ref" | bc)
 
 ext=( img img.rec ifh hdr )

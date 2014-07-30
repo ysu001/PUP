@@ -10,6 +10,11 @@
 ################################################################################
 # Yi Su, 02/03/2014
 
+die(){
+    echo >&2 "$@"
+    exit -1
+}
+
 idstr='$Id: manroipostproc,v 1.0 Fri Jan 31 09:41:55 CST 2014 suy $'
 
 echo $idstr
@@ -26,12 +31,12 @@ paramsfn=$1
 
 ###############################################################################
 # Read PARAMS file
-source $paramsfn
+source $paramsfn || die "$program ERROR: Cannot source params file $paramsfn"
 
 # Further development will improve this program to check the validity of
 # the inputs specified in the params file
 
-optid=${petid%%_*}
+optid=${petid%_*}
 
 # processing LOGAN analysis result
 loganinfn=${optid}_LOGAN.txt
@@ -40,7 +45,7 @@ if [ -e ${loganinfn} ]
 then
 	head -1 ${loganinfn} > ${loganoutfn}
 	grep brainstem ${loganinfn} >> ${loganoutfn}
-	
+
 	# caudate
 	lnv=`gawk '/left-caudate/{print $2}' ${loganinfn}`
 	lbp=`gawk '/left-caudate/{print $3}' ${loganinfn}`
@@ -85,7 +90,7 @@ then
 	intc=$(echo "scale=6; ($lintc*$lnv+$rintc*$rnv)/$nv" |bc)
 	printf "%-35s %11d %11.4f %11.4f %11.4f\n" gyrusrectus $nv $bp $rsq $intc >> $loganoutfn
 	gyrusrectus=$bp
-	
+
 	# lattemp (MCBP region)
 	lnv=`gawk '/left-lattemp/{print $2}' ${loganinfn}`
 	lbp=`gawk '/left-lattemp/{print $3}' ${loganinfn}`
@@ -178,7 +183,7 @@ then
 	rsq=$(echo "scale=6; ($lrsq*$lnv+$rrsq*$rnv)/$nv" |bc)
 	intc=$(echo "scale=6; ($lintc*$lnv+$rintc*$rnv)/$nv" |bc)
 	printf "%-35s %11d %11.4f %11.4f %11.4f\n" rostral $nv $bp $rsq $intc >> $loganoutfn
-	
+
 	mcbp=$(echo "scale=6; ($gyrusrectus+$lattemp+$precuneus+$prefrontal)/4." |bc)
 	printf "%-35s %11d %11.4f %11.4f %11.4f\n" MCBP 0 $mcbp 0.0 0.0 >> $loganoutfn
 fi
@@ -190,7 +195,7 @@ if [ -e ${suvrinfn} ]
 then
 	head -1 ${suvrinfn} > ${suvroutfn}
 	grep brainstem ${suvrinfn} >> ${suvroutfn}
-	
+
 	# caudate
 	lnv=`gawk '/left-caudate/{print $2}' ${suvrinfn}`
 	lsuvr=`gawk '/left-caudate/{print $3}' ${suvrinfn}`
@@ -217,7 +222,7 @@ then
 	suvr=$(echo "scale=6; ($lsuvr*$lnv+$rsuvr*$rnv)/$nv" |bc)
 	printf "%-35s %11d %11.4f\n" gyrusrectus $nv $suvr >> $suvroutfn
 	gyrusrectus=$suvr
-	
+
 	# lattemp (MCBP region)
 	lnv=`gawk '/left-lattemp/{print $2}' ${suvrinfn}`
 	lsuvr=`gawk '/left-lattemp/{print $3}' ${suvrinfn}`
@@ -274,7 +279,7 @@ then
 	(( nv=lnv+rnv ))
 	suvr=$(echo "scale=6; ($lsuvr*$lnv+$rsuvr*$rnv)/$nv" |bc)
 	printf "%-35s %11d %11.4f\n" rostral $nv $suvr >> $suvroutfn
-	
+
 	mcsuvr=$(echo "scale=6; ($gyrusrectus+$lattemp+$precuneus+$prefrontal)/4." |bc)
 	printf "%-35s %11d %11.4f\n" MCSUVR 0 $mcsuvr >> $suvroutfn
 fi

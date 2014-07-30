@@ -18,6 +18,11 @@
 ################################################################################
 # Yi Su, 01/29/2014
 
+die(){
+    echo >&2 "$@"
+    exit -1
+}
+
 idstr='$Id: petatlpreproc,v 1.0 Wed Jan 29 09:00:30 CST 2014 suy $'
 
 echo $idstr
@@ -33,7 +38,7 @@ fi
 paramsfn=$1
 ###############################################################################
 # Read PARAMS file
-source $paramsfn
+source $paramsfn || die "$program ERROR: Cannot source params file $paramsfn"
 
 # Further development will improve this program which checks the validity of
 # the inputs specified in the params file
@@ -44,7 +49,7 @@ source $paramsfn
 cp $petatldir/${refimg}.4dfp.* .  # pet atlas template
 cp $petatldir/${roiimg}.4dfp.* .  # pet roi template
 cp $petatldir/${roilist} . # pet roi list
-cp $petatldir/${maskroot}.4dfp.* . # atlas brain mask file 
+cp $petatldir/${maskroot}.4dfp.* . # atlas brain mask file
 
  ###############################################################################
 # populate maskfile parameter in the params file for further processing
