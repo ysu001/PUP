@@ -105,7 +105,7 @@ else # target is patient MR (the most common case, i.e. FreeSurfer based process
 fi
 
 # eliminating scale factor in the t4 file
-sed /scale:/d ${petid}_sumall_to_${refimg}_t4 tmpt4 || die "$program ERROR: sed /scale:/d ${petid}_sumall_to_${refimg}_t4 tmpt4 failed"
+sed /scale:/d ${petid}_sumall_to_${refimg}_t4>tmpt4 || die "$program ERROR: sed /scale:/d ${petid}_sumall_to_${refimg}_t4 tmpt4 failed"
 cp tmpt4 ${petid}_sumall_to_${refimg}_t4 || die "$program ERROR: cp tmpt4 ${petid}_sumall_to_${refimg}_t4 failed"
 
 # target is in patient space and the reference image to atlas transformation is known (atlt4)
