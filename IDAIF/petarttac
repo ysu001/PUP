@@ -5,7 +5,7 @@
 # image-derived arterial input function (IDAIF)				       #
 #                                   				               #
 # USAGE:								       #
-#	petaiftac paramsfn                                                     #
+#	petarttac paramsfn                                                     #
 #                                                                              #
 # This script reads a params file that includes:                               #
 #	petid:	petid is a string associated with the file name PET data in    #
@@ -25,7 +25,7 @@
 #									       #
 # The output of this program is a series of TAC curves			       #
 ################################################################################
-# Yi Su, 12/23/2013
+# Yi Su, 1/12/2015
 VERSION=1.0
 
 if [ "$1" == "--version" ]; then
@@ -39,7 +39,7 @@ die(){
 }
 
 program=`basename $0`
-idstr='$Id: '$program',v '$VERSION' Fri Jan 31 09:40:11 CST 2014 suy $'
+idstr='$Id: '$program',v '$VERSION' Mon Jan 12 13:40:11 CST 2015 suy $'
 echo $idstr
 
 if [ $# -lt 1 ]
@@ -85,25 +85,7 @@ then
 fi
 touch ${petid}_WB.tac
 
-###############################################################################
-# RSF preprocessing if requested
-if (( rsfflag == 1 ))
-then
-	echo 1
-	calrsfmat $roiimg $roilist RSFMat.dat $fwhm || die "$program ERROR: calrsfmat $roiimg $roilist RSFMat.dat $fwhm failed"
-fi
 
-###############################################################################
-# PVC2C preprocessing if requested
-if (( pvc2cflag == 1 ))
-then
-	imgblur_4dfp BrainMask $fwhm || die "$program ERROR: imgblur_4dfp BrainMask $fwhm failed"
-	bx=`echo $fwhm | awk '{print 10*$1}'`
-	bstr="_b"$bx
-	roieval3 BrainMask${bstr} $roiimg PETFOV $roilist $NROI pvc2c 0 || die "$program ERROR: roieval3 BrainMask${bstr} $roiimg PETFOV $roilist $NROI pvc2c 0 failed"
-	mv pvc2c_ROI2_f0 pvc2c.txt
-fi
-echo 2
 ###############################################################################
 # Find whole brain mask
 t=`gawk '/Right-UnsegmentedWhiteMatter/ {print $2}' ${roilist}`
@@ -111,7 +93,7 @@ t=$(echo "scale=3; $t+0.5" |bc)
 zero_gt_4dfp $t $roiimg
 maskimg_4dfp  PETFOV ${roiimg}z WBMask
 rm ${roiimg}z.*
-echo 3
+
 ###############################################################################
 # Perform ROI analysis frame by frame
 frames=`wc -l $mocofn | gawk '{print $1}'`
@@ -136,53 +118,6 @@ do
 	qnt_4dfp ${petid}"_"$f"_on_roi" artm0 | gawk '/Mean/ {print $2}' >> ${petid}_art0.tac
 	rm ${petid}"_"${f}.*
 	rm ${petid}"_"${f}_on_roi.*
-done
-echo 4
-###############################################################################
-# Generate ROI TACs
-for (( i=1; i<=NROI; i++ ))
-do
-	(( l = i + 1 ))
-	label=`gawk 'NR=='$i' {print $1}' $roilist`
-	echo "label = ${label}"
-	tacfn=${petid}_${label}.tac
-	rsftacfn=${petid}_${label}_RSF.tac
-	pvc2ctacfn=${petid}_${label}_PVC2C.tac
-
-	NVOX=`gawk 'NR=='$l' {print $2}' ${petid}_ROI2_f1`
-	printf "%9s %15s %15s %15s %15s %10d\n" "Frame_#" "Start_Time_(s)" "Duration_(s)"  "Mean" "NVoxels=" $NVOX > $tacfn
-	if (( rsfflag == 1 ))
-	then
-		printf "%9s %15s %15s %15s %15s %10d\n" "Frame_#" "Start_Time_(s)" "Duration_(s)"  "Mean"  "NVoxels=" $NVOX > $rsftacfn
-	fi
-	if (( pvc2cflag == 1 ))
-	then
-		printf "%9s %15s %15s %15s %15s %10d\n" "Frame_#" "Start_Time_(s)" "Duration_(s)"  "Mean"  "NVoxels=" $NVOX > $pvc2ctacfn
-	fi
-
-	for (( f=1; f<=frames; f++ ))
-	do
-		framefn=${petid}"_ROI2_f"$f
-		rsffn=${petid}"_RSF_ROI2_f"$f
-		ts=`gawk 'NR=='$f' {print $1}'  ${petid}".info"`
-		td=`gawk 'NR=='$f' {print $3}'  ${petid}".info"`
-		meanroi=`gawk 'NR=='$l' {print $3}' $framefn`
-		printf "%9d %15f %15f %15f\n" $f $ts $td $meanroi >> $tacfn
-		if (( rsfflag == 1 ))
-		then
-			meanroirsf=`gawk 'NR=='$l' {print $3}' $rsffn`
-			printf "%9d %15f %15f %15f\n" $f $ts $td $meanroirsf >> $rsftacfn
-		fi
-
-		if (( pvc2cflag == 1 ))
-		then
-			cf=`gawk '/'$label'/ {print $3}' pvc2c.txt`
-			meanroipvc2c=$(echo "scale=8; $meanroi/($cf+0.00001)" | bc)
-			printf "%9d %15f %15f %15f\n" $f $ts $td $meanroipvc2c >> $pvc2ctacfn
-		fi
-
-	done
-
 done
 
 ###############################################################################

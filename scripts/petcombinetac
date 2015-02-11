@@ -1,0 +1,98 @@
+#!/bin/bash
+################################################################################
+# Generate combined region roi TACs                                            #
+#                                   				               #
+# USAGE:								       #
+#	petcombinetac petid roilist keystr outstr tacpostfix                   #
+#	petid:	petid is a string associated with the file name PET data in    #
+#               4dfp format.						       #
+#	roilist:the text file that tabulates existing ROI names                #
+#	keystr: string contained in ROI names to form combined ROI             #
+#	outstr: combined ROI name  				               #
+#	tacpostfix: postfix for the tac file, standard postfix is ".tac", it   #
+#		    could have extra strings, for example the postfix for an   #
+#		    RSF corrected tac is "_RSF.tac". The TAC file for a        #
+#		    specific ROI and dataset would follow the naming convention#
+#		    ${petid}_${ROINAME}${tacpostfix}			       #
+#									       #
+# The output of this program is the combined ROI TAC file		       #
+################################################################################
+# Yi Su, 01/12/2015
+
+VERSION=1.0
+
+if [ "$1" == "--version" ]; then
+    echo $VERSION
+    exit 0
+fi
+
+die(){
+    echo >&2 "$@"
+    exit -1
+}
+
+program=`basename $0`
+idstr='$Id: '$program',v '$VERSION' 2015/01/12 12:56:48 suy $'
+echo $idstr
+
+if [ $# -lt 4 ]
+then
+	echo "Usage: $program petid roilist keystr outstr tacpostfix"
+	exit -1
+fi
+
+petid=$1
+roilist=$2
+keystr=$3
+outstr=$4
+tacpostfix=$5
+
+###############################################################################
+tacfn=${petid}_${outstr}${tacpostfix}
+gawk '/'$keystr'/ {print $1}' $roilist > outlist.txt
+nout=`wc -l outlist.txt | gawk '{print $1}'`
+if (( $nout == 0 ))
+then
+	echo "ERROR: No ROI found with $keystr. Abort!"
+	exit 4
+elif (( $nout == 1 ))
+then
+	outlabel=`cat outlist.txt`
+	cp ${petid}_${outlabel}${tacpostfix} ${tacfn}
+elif (( $nout > 1 ))
+then
+	# Calculate total ROI size
+	nvout=0
+	for (( i=1; i<=$nout; i++ ))
+	do
+		label=`gawk 'NR=='$i' {print $1}' outlist.txt`
+		nv=`gawk 'NR==1 {print $6}' ${petid}_${label}${tacpostfix}`
+		(( nvout+=$nv ))
+	done
+	if (( $nvout == 0 ))
+	then
+		die "$program ERROR: out NVoxels=0; must be > 0."
+	fi
+	printf "%9s %15s %15s %15s %15s %10d\n" "Frame_#" "Start_Time_(s)" "Duration_(s)"  "Mean" "NVoxels=" $nvout > ${tacfn}
+	frames=`wc -l ${petid}_${label}${tacpostfix} | gawk '{print $1}'`
+
+	for (( f=2; f<=$frames; f++ ))
+	do
+		meanv=0
+		for (( i=1; i<=$nout; i++ ))
+		do
+			label=`gawk 'NR=='$i' {print $1}' outlist.txt`
+			nv=`gawk 'NR==1 {print $6}' ${petid}_${label}${tacpostfix}`
+			rv=`gawk 'NR=='$f' {print $4}' ${petid}_${label}${tacpostfix}`
+			tmp=$meanv
+			meanv=$(echo "scale=8; $tmp+$nv*$rv" | bc)
+		done
+		tmp=$meanv
+		meanv=$(echo "scale=8; $tmp/$nvout" | bc)
+		(( l=$f-1 ))
+		ts=`gawk 'NR=='$f' {print $2}'  ${petid}_${label}${tacpostfix}`
+		td=`gawk 'NR=='$f' {print $3}'  ${petid}_${label}${tacpostfix}`
+		printf "%9d %15f %15f %15f\n" $l $ts $td $meanv >> $tacfn
+	done
+fi
+exit 0
