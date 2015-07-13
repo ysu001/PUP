@@ -1,0 +1,37 @@
+  BIT	FUNCTION
+      1	enable (always use)
+      2	1 = 3D tranform; 0 = 2D transform
+      4	1 = general affine warp (12 parameter in 3D mode); 0 rigid body motion
+      8 enable  source image         voxel size adjust
+     16 disable source image x voxel voxel size adjust
+     32 disable source image y voxel voxel size adjust
+     64 disable source image z voxel voxel size adjust
+    128 unused
+    256	1 = common contrast mechanism registration; 0 fross-modal registration
+    512	superfine mode (2.5 mm sampling)
+   1024 fast mode (12 mm sampling with fixed parameter search radius)
+   2048 fine mode (5  mm sampling with decreasing parameter search radius)
+   4096 preliminary brute force optimization of translation at 7.5 mm intervals
+   8192 1 = Gauss-Newton parameter optimization (final refinement); 0 = sequential optimization
+
+	SPECIAL COMBINATIONS
+   3072	5 mm sampling with fixed parameter search radius
+
+NOTE
+Gauss-Newton mode generally used with 5 mm sampling (bit 2048 set)
+general affine warp mode (bit 4 = 1) overrides voxel size adjust
+
+-------------------------------------------------------------------------------
+EXERPTED FORTRAN CODE
+      if(nz2.lt.2)mode=mode.and.(.not.2)	! prevent attempt to 3d align
+      lenable=(mode.and.1).ne.0
+      l3d=(mode.and.2).ne.0
+      lstretch=(mode.and.4).ne.0
+      lvoxsiz=(mode.and.8).ne.0
+      lcorrel=(mode.and.256).ne.0
+      lsuperfine=(mode.and.512).ne.0
+      lfast=(mode.and.1024).ne.0
+      lfine=(mode.and.2048).ne.0
+      lfind=(mode.and.4096).ne.0
+      lhessian=(mode.and.8192).ne.0
+      lcorrel=(mode.and.256).ne.0

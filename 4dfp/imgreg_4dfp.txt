@@ -1,0 +1,70 @@
+Program:	imgreg_4dfp
+
+Purpose:	compute affine image registration
+
+Usage:	imgreg_4dfp image_file1 mask_file1 image_file2 mask_file2 t4file mode
+
+Argument description:
+image_file1	target image
+mask_file1	target image mask (or "none")
+image_file2	object image
+mask_file2	object image mask (or "none")
+t4file		ASCII listing of computed transform as 4 x 4 matrix
+mode		32 bit operation control word
+
+Operation: The transform, [T], is optimized so that object image
+read at coordinates transformed by [T] most closely
+matches the target. That is, the average over all x of the match between
+I2([T]x) and I1(x) is optimized. imgreg_4dfp operates iteratively. The
+stating value of [T] is read from t4file if one is present. Otherwise
+[T] is initialized to the identiy matrix. The image matching metric
+is evaluated at voxels for which both image masks are non-zero. Both
+images are read by trilinear interpolation. The default image registration
+metric ("gradient") is intended for cross-modal registration, i.e, 
+for images with dissimilar contrast mechanisms. The default image matching
+metric sampling interval 10 mm in all directions with gradual reduction
+to 4 mm at later stages of iteration. The default parameter search
+optimization algorithm is grid search, i.e., the parameters
+are serially optimized one at a time.
+
+mode word bit assignments
+    1	enable coordinate transform
+    2	enable 3D alignment
+    4   enable affine warp (12 parameters in 3D 6 parameters in 2D)
+    8	enable voxel size adjust
+   16	disable x voxel size adjust
+   32	disable y voxel size adjust
+   64	disable z voxel size adjust
+  128	unassigned
+  256	when set use difference image minimization (for similar contrast mechanisms)
+  512	superfine mode (2 mm cubic grid metric sampling)
+ 1024	fast mode (12 mm cubic grid metric sampling)
+ 2048	fine mode (5 mm cubic grid metric sampling)
+ 4096	[T] restricted to translation explored at 7.5 mm intervals
+ 8192	enable parameter optimization by computation of the metric gradient
+	in parameter space and inversion of the Hessian
+
+Image format: all imput images must be 4dfp format.
+
+Additional points: imgreg_4dfp and some related programs read critical
+information (voxel size and center of rotation) from
+the ifh file associated with each image. If this information is not in
+the ifh file then standard default center assignments near the image array
+center are made. It is not necessary that the target and object
+images match in dimension or voxel size. However, the target mask must
+match the target image and similarly for the object mask and image.
+imgreg_4dfp can align images of very different orientation, e.g., sagittal
+vs transverse, if the t4file is initialized appropriately.
+
+Related programs:
+t4img			apply a computed transform [T] to an image
+t4_inv			compute algebraic inverse of [T]
+t4_mul			compute algebraic product [T1][T2]
+gauss_4dfp		3D gauss low pass filter
+butterworth_4dfp	3D butterworth low pass filter
+imgblur_4dfp		x, y, z gaussian blur
+zero_lt_4dfp		zero voxels below a threshold
+zero_gt_4dfp		zero voxels above a threshold
+zero_slice_4dfp		zero x, y, z planes in a given range
+analyzeto4dfp
+4dfptoanalyze
