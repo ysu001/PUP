@@ -1,0 +1,161 @@
+#!/bin/csh
+# $Header: /data/petsun4/data1/solaris/csh_scripts/RCS/msktgen_4dfp,v 1.21 2010/07/27 01:52:58 avi Exp $
+# $Log: msktgen_4dfp,v $
+# Revision 1.21  2010/07/27  01:52:58  avi
+# look for any target t4file of for *_to_711-2[B-Z]_t4
+#
+# Revision 1.20  2009/07/24  07:15:20  avi
+# add 711-2S
+#
+# Revision 1.19  2009/04/15  01:13:41  avi
+# make robust to embedded filename '.'s
+#
+# Revision 1.18  2007/09/01  22:33:49  avi
+# typo
+#
+# Revision 1.17  2007/09/01  21:54:42  avi
+# correct t4file finding logic when -T option used
+#
+# Revision 1.16  2007/07/23  21:08:02  mohanar
+# Added default atlas
+#
+# Revision 1.15  2007/07/20  20:27:09  mohanar
+# Added -T and -S option. Fixed bug to set the threshold for study specific representative target
+#
+# Revision 1.14  2007/03/02  16:46:02  mohanar
+# Added check for validity of input and modified refdir from /data/petsun9/data2/petmri
+#
+# Revision 1.13  2007/02/21  06:38:57  avi
+# add 711-2F
+#
+# Revision 1.12  2007/02/21  04:16:43  avi
+# Solaris 10 compatible
+#
+# Revision 1.11  2005/08/12  20:16:26  avi
+# add 711-2V
+#
+set idstr =	'$Id: msktgen_4dfp,v 1.21 2010/07/27 01:52:58 avi Exp $'
+set program =	$0; set program = $program:t;
+set wrkdir =	$cwd
+if (! $?RELEASE) then
+	set bindir = /data/petsun4/data1/solaris
+else
+	set bindir = $RELEASE
+endif
+if (! $?REFDIR)	then
+	set refdir = /data/petsun43/data1/atlas
+else
+	set refdir = $REFDIR
+endif
+set thresh =	200
+set atlas = "711-2B"
+
+echo $idstr
+if (${#argv} < 1) then
+	echo "Usage:	"$program" <(4dfp) image> [threshold] -T<target including path>  -S<atlas space>"
+	echo "e.g.,	"$program" 4859-5_mpr"
+	echo "e.g.,	"$program" 4859-5_mpr -T/data/petsun29/data1/atlas/NP345_111[.4dfp.img] -S711-2B"
+	echo "N.B.:	default threshold = 200"
+	echo "	Specifiy a higher threshold, e.g., 400 for a tighter mask and vice versa"
+	echo "N.B.:	"$program" uses the first legitimate atlas transform t4 file it sees in "
+	echo "	the current working directory, i.e., one of <image>_to_711-2*_t4"
+	echo " 	or  one of <image>_to_<target>_t4"
+	echo "N.B.:	-S specifies the atlas space to use. Atlas supported currently is 711-2B. -S must be used with -T option"
+
+	exit 1
+endif
+
+set target = ""
+set targetpath = ""
+set hasStudyTarget = 0
+set hasAtlas = 0
+
+if (${#argv} > 1) then
+	@ n = ${#argv}
+	@ m = $n
+	set isNumber = 0
+	while ($m > 1)
+		switch ($argv[$m])
+		case -T*:
+			set targetpath   = `echo $argv[$m] | awk '{print substr($1,3)}'`;
+			set target       = $targetpath:gt;
+			set target       = $target:gr			# trim off extensions
+			set target       = $target:gr
+			set target       = $target:gr
+			set hasStudyTarget = 1
+			breaksw;
+		case -S*:
+			set atlas   = `echo $argv[$m] | awk '{print substr($1,3)}'`;
+			set hasAtlas = 1
+			breaksw;
+		default:
+			set isNumber = `echo $argv[$m] | awk '/^[+-]?[0-9]*\.?[0-9]*$/{print 1}'`
+			if ($isNumber == 1) then
+				set thresh =  $argv[$m];
+			else
+			    echo Invalid numerical format for threshold. $program input error
+			    exit -1
+			endif
+		endsw
+		@ m--
+	end
+endif
+
+if ($hasStudyTarget == 1) then
+	if ($hasAtlas == 0) then
+		echo "-S option not used; using default atlas "$atlas
+	else
+		if ($atlas != "711-2B") then
+			echo Unsupported atlas $atlas
+			exit -1
+		endif
+	endif
+endif
+
+echo target	= $target
+echo atlas	= $atlas
+echo threshold	= $thresh
+
+set img = $1
+if ($img:e == "img")	set img = $img:r
+if ($img:e == "4dfp")	set img = $img:r
+if (! -e $img.4dfp.img || ! -e $img.4dfp.ifh) then
+	echo $img.4dfp.img or $img.4dfp.ifh not found
+	exit -1
+endif
+
+if ($hasStudyTarget) then
+	set t4file = $img"_to_"$target"_t4"
+	if (! -e $img"_to_"$target"_t4") then
+		echo $img"_to_"$target"_t4" not found
+		exit -1
+	endif
+else
+	set lst = (`ls ${img}_to_711-2[B-Z]_t4`)
+	if (${#lst} == 0) then
+		echo "atlas transform file (e.g., "$img"_to_711-2B_t4) not found"
+		exit -1
+	endif
+	if (${#lst} > 1) then
+		echo $program warning: non unique atlas transform file found
+	endif
+	set t4file = $lst[1]
+endif
+
+set refmsk =	$refdir/$atlas"_mask_g5_111"
+if (! -e $refmsk.4dfp.img || ! -e $refmsk.4dfp.ifh) then
+	echo mask for $atlas not found
+	exit -1
+endif
+
+echo computing tailored mask $img"_mskt"
+t4_inv $t4file temp$$
+sed '/scale:/d' temp$$ >! atlas_to_$img"_t4"
+
+t4img_4dfp atlas_to_$img"_t4" $refmsk temp$$ -O$img
+/bin/rm atlas_to_$img"_t4"
+zero_lt_4dfp $thresh temp$$ $img"_mskt"
+
+/bin/rm temp$$*
+
+exit

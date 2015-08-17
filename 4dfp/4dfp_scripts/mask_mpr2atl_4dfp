@@ -1,0 +1,226 @@
+#!/bin/csh
+#$Header: /home/usr/mohanar/WORK/source/RCS/mask_mpr2atl_4dfp,v 1.7 2008/07/25 22:08:21 mohanar Exp $
+#$Log: mask_mpr2atl_4dfp,v $
+# Revision 1.7  2008/07/25  22:08:21  mohanar
+# Added the fix to thr linking of file section if t2w is none and added a status check on mkdir
+#
+# Revision 1.6  2008/07/21  22:25:38  avi
+# duplicate atlas representative target and mask logic from mpr2atl_4dfp
+# which means using all 111 space targets and masks
+#
+# Revision 1.5  2008/07/21  15:01:50  mohanar
+# Added -T and -S options; resulting in many changes to the code due to the way target was being defined.
+#
+# Revision 1.4  2007/04/13  21:51:46  avi
+# $outdir masked_atlas -> masked
+#
+# Revision 1.3  2007/02/23  05:47:22  avi
+# correct bug in ln command
+#
+# Revision 1.2  2006/05/26  02:00:13  avi
+# generalize target possibilities
+#
+# Revision 1.1  2004/12/02  23:37:29  avi
+# Initial revision
+#
+set idstr = '$Id: mask_mpr2atl_4dfp,v 1.7 2008/07/25 22:08:21 mohanar Exp $'
+set program = $0; set program = $program:t
+
+set outdir = masked
+if (${#argv} < 4) then
+	echo "Usage:	"$program "<mpr> <mpr_mask> <T2W> <epi_anat> [711-2? OR -T<target including path> -S<atlas space>] [crossmodal] [setecho] [debug]"
+	echo "e.g.,	"$program "vc6802_1246-2 vc6802_1246-2_lesion_mask none vc6802_anat_ave 711-2L"
+	echo "e.g.,	"$program "vc6802_1246-2 vc6802_1246-2_lesion_mask none vc6802_anat_ave -T/data/petsun23/data1/atlas/NP345_111[.4dfp.img] -S711-2B"
+	echo "N.B.:	if no T2W is available use "'"'none'"'
+	echo "N.B.:	<mpr>_to_711-2[B-Z]_t4 must already exist (original and final atlas targets can be different)"
+	echo "N.B.:	<mpr_mask> is the lesion compliment in data space, i.e., in register with <mpr>"
+	echo "N.B.:	"$program output will be put in subdirectory $outdir
+	echo "N.B.:	-S specifies the atlas space to use. Atlas supported currently is 711-2B. -S must be used with -T option"
+	exit
+endif
+
+set modes	= (0 0)
+@ modes[1]	= 2048 + 256 + 7
+@ modes[2]	= 2048 + 256 + 7
+
+@ debug = 0
+@ crossmodal = 0
+
+set atlas = "711-2B"
+set targetpath = ""
+set hasStudyTarget = 0
+set hasAtlas = 0
+
+set target = "711-2B"
+@ n = ${#argv}
+@ m = $n
+while ($m > 0)
+	switch ($argv[$m])
+	case setecho:
+		set echo;		breaksw;
+	case crossmodal:
+		@ crossmodal++;		breaksw;
+	case debug:
+		@ debug++;		breaksw;
+	case 711-2?:
+		set target		= $argv[$m];
+		set atlas		= 711-2B;
+		set hasAtlas		= 1;
+		set targetswitch	= $target
+		breaksw;
+	case -T*:
+		set targetpath		= `echo $argv[$m] | awk '{print substr($1,3)}'`;
+		set target		= $targetpath:gt;
+		set target		= $target:gr			# trim off extensions
+		set target		= $target:gr
+		set target		= $target:gr
+		set targetswitch	= "-T"$targetpath
+		set hasStudyTarget	= 1;
+		breaksw;
+	case -S*:
+		set atlas   = `echo $argv[$m] | awk '{print substr($1,3)}'`;
+		set hasAtlas = 1;
+		breaksw;
+
+	endsw
+	@ m--
+end
+if ($target == "711-2A") then
+	echo unsupported target
+	exit -1;
+endif
+if ($hasStudyTarget == 1) then
+	if ($hasAtlas == 0) then
+		echo -S option not used. Using default atlas $atlas
+	else
+		if ($atlas != "711-2B") then
+			echo Unsupported atlas $atlas used
+			exit -1;
+		endif
+	endif
+endif
+
+if (! $?REFDIR)	then
+	set refdir = /data/petsun9/data2/petmri
+else
+	set refdir = $REFDIR
+endif
+set date0 =	`date`
+echo "target="$target "atlas="$atlas
+
+set refmsk =	$refdir/$atlas"_mask_g5_111z"
+if (! -e $refmsk.4dfp.img || ! -e $refmsk.4dfp.ifh) then
+	echo mask for $atlas not found
+	exit -1
+endif
+
+switch ($target)
+	case 711-2?:
+		set ref =	$refdir/$target
+		breaksw;
+	default:
+		set ref =	$targetpath
+endsw
+
+set mpr = $1; if ($mpr:e == "img") set mpr = $mpr:r; if ($mpr:e == "4dfp") set mpr = $mpr:r;
+if (! -e $mpr.4dfp.img || ! -e $mpr.4dfp.ifh) then
+	echo $program": "$mpr not found
+	exit -1
+endif
+
+set msk = $2; if ($msk:e == "img") set msk = $msk:r; if ($msk:e == "4dfp") set msk = $msk:r;
+if (! -e $msk.4dfp.img || ! -e $msk.4dfp.ifh) then
+	echo $program": "$msk not found
+	exit -1
+endif
+
+if ($3 != "none") then
+set t2w = $3; if ($t2w:e == "img") set t2w = $t2w:r; if ($t2w:e == "4dfp") set t2w = $t2w:r;
+if (! -e $t2w.4dfp.img || ! -e $t2w.4dfp.ifh) then
+	echo $program": "$t2w not found
+	exit -1
+endif
+endif
+
+set epi = $4; if ($epi:e == "img") set epi = $epi:r; if ($epi:e == "4dfp") set epi = $epi:r;
+if (! -e $epi.4dfp.img || ! -e $epi.4dfp.ifh) then
+	echo $program": "$epi not found
+	exit -1
+endif
+
+set t4file0 = (`ls $mpr"_to_"$target"_t4"`)
+if (${#t4file0} < 1) then
+	echo $program": "$mpr"_to_"$target"_t4" not found
+	exit -1
+endif
+
+mkdir $outdir
+
+if ($status) then
+  echo $cwd/$outdir exists. Please move it out of the way
+  exit -1
+endif
+
+/bin/cp $t4file0[1] $outdir/$mpr"_to_"$target"_t4"
+pushd $outdir
+foreach x (../$mpr.4dfp* ../$msk.4dfp.*  ../$epi.4dfp*)
+	ln -s $x .
+end
+
+if ($3 != "none") then
+	foreach x (../$t2w.4dfp.* )
+		ln -s $x .
+	end
+endif
+
+set t4file = $mpr"_to_"$target"_t4"
+
+set log = $mpr"_to_"$target.log
+date >!				$log
+echo $program $argv[1-] >>	$log
+echo $idstr >>			$log
+
+if ($crossmodal) then
+	@ k = 1
+	while ($k <= ${#modes})
+		@ modes[$k] -= 256
+	@ k++
+	end
+endif
+
+echo	gauss_4dfp $mpr 1.1
+	gauss_4dfp $mpr 1.1
+endif
+
+@ k = 1
+while ($k <= ${#modes})
+	if ($debug) then
+		imgreg_4dfp $ref $refmsk $mpr"_g11" $msk $t4file $modes[$k]
+	else
+		imgreg_4dfp $ref $refmsk $mpr"_g11" $msk $t4file $modes[$k] >> $log
+	endif
+	@ k++
+end
+foreach O (333 222 111)
+echo	t4img_4dfp $t4file $mpr $mpr"_on_"$target"_"$O -O$O
+	t4img_4dfp $t4file $mpr $mpr"_on_"$target"_"$O -O$O
+	ifh2hdr $mpr"_on_"$target"_"$O -r1500
+end
+
+if ($3 == "none") then
+	echo	epi2mpr2atl1_4dfp $epi $mpr useold $targetswitch
+		epi2mpr2atl1_4dfp $epi $mpr useold $targetswitch
+else
+	echo	epi2t2w2mpr2atl1_4dfp $epi $t2w $mpr useold $targetswitch
+		epi2t2w2mpr2atl1_4dfp $epi $t2w $mpr useold $targetswitch
+endif
+foreach O (333 222)
+echo	t4img_4dfp $epi"_to_"$target"_t4" $epi 	$epi"_on_"$target"_"$O -O$O
+	t4img_4dfp $epi"_to_"$target"_t4" $epi 	$epi"_on_"$target"_"$O -O$O
+	ifh2hdr -r3000	$epi"_on_"$target"_"$O
+end
+
+popd
+echo "start time "$date0
+echo "end   time "`date`
+exit

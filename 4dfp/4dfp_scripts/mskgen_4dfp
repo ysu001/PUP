@@ -1,0 +1,19 @@
+#!/bin/csh
+#$Header: /data/petsun4/data1/solaris/csh_scripts/RCS/mskgen_4dfp,v 1.3 2009/06/10 21:02:57 avi Exp $
+#$Log
+set idstr = '$Id: mskgen_4dfp,v 1.3 2009/06/10 21:02:57 avi Exp $'
+echo $idstr
+
+if (${#argv} < 1) then
+	echo "Usage:	"$0" <4dfp_image>"
+	exit 1
+endif
+
+foreach e (img img.rec ifh)
+	/bin/cp $1.4dfp.$e $1"_msk".4dfp.$e
+end
+
+zero_lt_4dfp 1 $1"_msk"
+/bin/rm $1"_msk".4dfp.*
+
+exit 0

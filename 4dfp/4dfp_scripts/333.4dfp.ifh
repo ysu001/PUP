@@ -1,0 +1,16 @@
+INTERFILE			:=
+version of keys			:= 3.3
+number format			:= float
+number of bytes per pixel	:= 4
+imagedata byte order    	:= bigendian
+orientation			:= 2
+number of dimensions		:= 4
+matrix size [1]			:= 48
+matrix size [2]			:= 64
+matrix size [3]			:= 48
+matrix size [4]			:= 1
+scaling factor (mm/pixel) [1]	:= 3.000000
+scaling factor (mm/pixel) [2]	:= 3.000000
+scaling factor (mm/pixel) [3]	:= 3.000000
+mmppix	:=   3.000000 -3.000000 -3.000000
+center	:=    73.5000  -87.0000  -84.0000

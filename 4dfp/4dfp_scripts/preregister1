@@ -1,0 +1,180 @@
+#!/bin/csh
+# $Header: /data/petsun4/data1/solaris/csh_scripts/RCS/preregister1,v 1.11 2001/10/05 23:26:48 avi Exp $
+# $Log: preregister1,v $
+# Revision 1.11  2001/10/05  23:26:48  avi
+# gauss_4dfp -> $bindir/gauss_4dfp
+#
+# Revision 1.10  2001/08/14  00:06:10  avi
+# primary target now 711-2B_b9 instead of 711-2A
+# first pass in search (4096) mode
+# allways use $refmsk and $cur"_g11"
+#
+# Revision 1.9  2001/08/05  00:33:19  avi
+# first imgreg_4dfp without $refmsk
+# gauss_4dfp in background
+# eliminate scale_4dfp $cur 10
+#
+# Revision 1.8  2000/10/24  03:48:55  avi
+# imato4dfpt -> imato4dfp1
+#
+# Revision 1.7  2000/03/04  10:39:12  avi
+# option -B (centerB)
+#
+# Revision 1.6  1999/11/07  01:15:27  avi
+# eliminate references to all directories other than $bindir and $refdir
+#
+# Revision 1.5  1999/02/28  03:15:12  avi
+# use Vision_to_711-2A_ave_t4
+# Revision 1.4  1999/02/22  02:15:19  avi
+# new refmsk = 711-2A_mask_g5z
+# Revision 1.3  1999/02/02  11:18:51  avi
+# \rsh petsun13 eliminated
+# Revision 1.2  1999/01/03  04:16:46  avi
+# run imato4dfp only if needed
+# Revision 1.1  1999/01/01  07:31:30  avi
+# Initial revision
+set rcsid = '$Id: preregister1,v 1.11 2001/10/05 23:26:48 avi Exp $'
+
+set program =	$0; set program = $program:t
+set bindir =	/data/petsun4/data1/solaris
+set refdir =	/data/petsun9/data2/petmri
+set ref =	$refdir/711-2B_b9
+set refmsk =	$refdir/711-2B_mask_g5z
+set oristr =	(T C S)
+
+if (${#argv} < 2) then
+	echo "Usage:	"$program" study loci_file [options]"
+	echo " e.g.,	"$program" 704-2 centerH.pnt -B"
+	echo "option"
+	echo "	-B	target 711-2B (default 711-2A)"
+	echo "	-p	generate preview image"
+	exit
+endif
+
+set date0 = `date`
+@ thresh_mask = 0
+@ preview = 0
+@ to2B = 0
+@ debug = 0
+
+@ i = 1
+while ($i <= $#argv)
+	switch ($argv[$i])
+	case -p:
+		@ preview++
+		breaksw
+	case -d:
+		@ debug++
+		breaksw
+	case -B:
+		@ to2B++
+		breaksw
+	endsw
+	@ i++
+end
+
+echo to2B=$to2B
+
+set file = `ls $1*ima | awk 'NR == 1'`
+set n = `$bindir/ima_info $file | awk '/Slices/{print $NF;exit}'`
+echo "looking for "$n" ima files"
+set string = `ls -l $1*ima | awk 'END{if(NR != n)print "file count error N = "NR}' n=$n`
+set wc = ${#string}
+if ($wc != 0) then
+	echo $string
+	exit -1
+endif
+
+set cur = $1:t
+set pss = `echo $cur | awk '{split($1,a,"-");print a[1], a[2], a[2];}'`
+echo	$bindir/imato4dfp1 $pss $cur
+	$bindir/imato4dfp1 $pss $cur
+if ($status) goto ERR
+
+@ ori = `awk '/orientation/{print $NF - 1}' $cur.4dfp.ifh`
+if ($ori == 3) then
+	$bindir/S2T_4dfp $cur
+	set cur = $cur"T"
+endif
+
+set t4filA = $cur"_to_711-2A_t4"
+set t4filB = $cur"_to_711-2B_t4"
+set loclog = $cur"_loci2trot.log"
+set reglog = $cur"_"$program.log
+
+if (-e $loclog && ! $preview) goto LOCI
+date >!			$reglog
+echo $0 $argv[1-] >>	$reglog
+echo $rcsid >>		$reglog
+/bin/cp $bindir/Vision_to_711-2A_ave_t4 $t4filB
+
+if (! -e $cur"_g11".4dfp.img || ! -e $cur"_g11".4dfp.ifh) $bindir/gauss_4dfp $cur 1.1
+
+@ mode = 4096 + 256 + 3
+date >> $reglog
+echo	$bindir/imgreg_4dfp $ref $refmsk $cur"_g11" none $t4filB $mode
+	$bindir/imgreg_4dfp $ref $refmsk $cur"_g11" none $t4filB $mode >> $reglog
+if ($status) goto ERR
+
+@ mode = 1024 + 256 + 3
+date >> $reglog
+echo	$bindir/imgreg_4dfp $ref $refmsk $cur"_g11" none $t4filB $mode
+	$bindir/imgreg_4dfp $ref $refmsk $cur"_g11" none $t4filB $mode >> $reglog
+if ($status) goto ERR
+tail -14 $reglog
+$bindir/t4_mul $t4filB $bindir/09_t4 temp_t4
+/bin/mv temp_t4 $t4filB
+
+@ mode = 1024 + 256 + 7
+date >> $reglog
+echo	$bindir/imgreg_4dfp $ref $refmsk $cur"_g11" none $t4filB $mode
+	$bindir/imgreg_4dfp $ref $refmsk $cur"_g11" none $t4filB $mode >> $reglog
+if ($status) goto ERR
+tail -17 $reglog
+
+@ mode = 1024 + 256 + 7
+date >> $reglog
+echo	$bindir/imgreg_4dfp $ref $refmsk $cur"_g11" none $t4filB $mode
+	$bindir/imgreg_4dfp $ref $refmsk $cur"_g11" none $t4filB $mode >> $reglog
+if ($status) goto ERR
+tail -17 $reglog
+
+@ k = `tail -1 $reglog | awk '{k=0; if ($2 > 0.99) k++; print k;}'`
+if ($k > 0) goto LOCI
+@ k = `tail -1 $reglog | awk '{k=0; if ($2 < 0.98) k++; print k;}'`
+if ($k > 0) @ mode = 3072 + 256 + 7
+date >> $reglog
+echo	$bindir/imgreg_4dfp $ref $refmsk $cur"_g11" none $t4filB $mode
+	$bindir/imgreg_4dfp $ref $refmsk $cur"_g11" none $t4filB $mode >> $reglog
+if ($status) goto ERR
+tail -17 $reglog
+
+LOCI:
+if (! $to2B) then
+	if (! -e $t4filA) $bindir/t4_mul $t4filB $refdir/711-2B_to_711-2A_t4 $t4filA
+endif
+
+if ($to2B) then
+	$bindir/loci2trot $t4filB $2 >! $loclog
+else
+	$bindir/loci2trot $t4filA $2 >! $loclog
+endif
+cat $loclog
+
+set fs_args = `cat $loclog | awk '/param6:/{print $2, $3, $4, $5, $6, $7}'`
+$bindir/free_slab $fs_args
+
+echo "start time "$date0
+echo "end   time "`date`
+tail -1 $reglog
+
+if ($preview) then
+	$bindir/t4img_4dfp $t4filB $cur $cur"_preview" -O222
+	$bindir/4dfptoanalyze $cur"_preview"
+endif
+
+if (! $debug) /bin/rm $1:t*4dfp* 
+exit
+
+ERR:
+exit -1

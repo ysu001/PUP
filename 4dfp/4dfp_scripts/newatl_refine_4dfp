@@ -1,0 +1,148 @@
+#!/bin/csh
+
+set idstr	= '$Id: newatl_refine_4dfp,v 1.5 2012/08/17 23:12:07 avi Exp $'
+set program	= $0; set program = $program:t
+echo $idstr
+
+@ debug = 0
+@ usemask = 0
+set target = $REFDIR/711-2B_111
+set blurstr = "_g11"
+######################
+# process command line
+######################
+@ k = 0
+@ i = 1
+while ($i <= ${#argv})
+	set swi = `echo $argv[$i] | awk '$1~/^-/{print substr($1,1,2)}'`
+	if (${#swi} > 0) then
+		set arg = `echo $argv[$i] | awk '{print substr($0,3)}'`
+		switch ($swi)
+			case -d:
+				@ debug++;		breaksw;
+			case -m:
+				@ usemask++;		breaksw;
+			case -T:
+				set target = $arg	breaksw;
+			case -b:
+				set blurstr = "";	breaksw;
+			default:
+				echo $swi option not recognized
+				goto USAGE
+				breaksw;
+		endsw
+	else
+		switch ($k)
+			case 0:
+				set newatl	= $argv[$i];	@ k++; breaksw;
+		endsw
+	endif
+	@ i++
+end
+if ($k < 1) goto USAGE
+echo "newatl = "$newatl
+if (! -e $newatl.lst) then
+	echo $program": "$newatl.lst not found
+	exit -1
+endif
+
+set mask 	= $REFDIR/711-2B_mask_g5_111z
+set echo
+#####################
+# test symbolic links
+#####################
+cat $target.4dfp.ifh
+if ($status) exit $status
+cat $mask.4dfp.ifh
+if ($status) exit $status
+
+if (! -e BAK) mkdir BAK
+@ iter = 0
+ITER:
+mkdir BAK/iter$iter
+
+###################
+# refine transforms
+###################
+set log = ${newatl}_$program.log
+echo $program $argv[1-] >!	$log
+date >>				$log
+
+###############################
+# register each case to average
+###############################
+foreach t4file (*_to_$newatl"_t4")
+	/bin/cp -p $t4file BAK/iter$iter
+	set mpr = `echo $t4file | awk '{l=index($1,"_to_");print substr($1,1,l-1)}'`	
+	if (! -e $mpr$blurstr.4dfp.img || ! -e $mpr$blurstr.4dfp.ifh) gauss_4dfp $mpr 1.1
+	if ($usemask) then
+		set mskstr = ${mpr}_mask
+	else
+		set mskstr = "none"
+	endif
+	@ mode = 2048 + 256 + 7
+echo	imgreg_4dfp $newatl"_111" $mask $mpr$blurstr $mskstr $t4file $mode >> $log
+	imgreg_4dfp $newatl"_111" $mask $mpr$blurstr $mskstr $t4file $mode >> $log
+	if ($status) exit $status
+end
+
+echo	/bin/mv $newatl"_111.4dfp*" BAK/iter$iter
+	/bin/mv $newatl"_111.4dfp"* BAK/iter$iter
+echo	t4imgs_4dfp $newatl.lst $newatl"_111" -O111
+	t4imgs_4dfp $newatl.lst $newatl"_111" -O111
+	if ($status) exit $status
+	ifh2hdr $newatl"_111" -r1600
+
+echo	/bin/mv $newatl"_to_711-2B_t4" BAK/iter$iter
+	/bin/mv $newatl"_to_711-2B_t4" BAK/iter$iter
+
+############################
+# register average to 711-2B
+############################
+@ mode = 2048 + 256 + 7
+imgreg_4dfp $target $mask $newatl"_111" none $newatl"_to_711-2B_t4.scale" $mode | tail -17 >> $log
+@ mode = 2048 + 7
+echo 	imgreg_4dfp $target $mask $newatl"_111" none $newatl"_to_711-2B_t4"	$mode >> $log
+	imgreg_4dfp $target $mask $newatl"_111" none $newatl"_to_711-2B_t4"	$mode >> $log
+	if ($status) exit $status
+	imgreg_4dfp $target $mask $newatl"_111" none $newatl"_to_711-2B_t4"	$mode >> $log
+tail -1 $newatl"_to_711-2B_t4.scale" >> $newatl"_to_711-2B_t4"
+echo	cat $newatl"_to_711-2B_t4" >> $log
+	cat $newatl"_to_711-2B_t4" >> $log
+
+####################
+# compose transforms
+####################
+foreach t4file (*_to_$newatl"_t4")
+	t4_mul $t4file $newatl"_to_711-2B_t4" temp_t4
+	/bin/mv temp_t4 $t4file
+end
+
+##############
+# remake atlas
+##############
+echo	t4imgs_4dfp $newatl.lst $newatl"_111" -O111
+	t4imgs_4dfp $newatl.lst $newatl"_111" -O111
+	if ($status) exit $status
+	ifh2hdr $newatl"_111" -r1600
+
+@ iter++
+if ($iter <= 8) goto ITER
+
+foreach e (img img.rec ifh hdr)
+	ln -s $newatl"_111".4dfp.$e $newatl.4dfp.$e
+end
+exit
+
+USAGE:
+echo "usage:	"$program"	<newatl>"
+echo "e.g.:	"$program"	711-2S"
+echo "	option"
+echo "	-b	suppress gauss 1.1 pre-blur of component images"
+echo "	-m	mask all input images"
+echo "	-T<str>	set reference target to specified image (default = $REFDIR/711-2B)"
+echo "N.B.:	<newatl> specifies the name of the new atlas representative target image"
+echo "N.B.:	all images (*.4dfp.img and *.4dfp.ifh) referred to in <newatl>.lst must exist in the working directory"
+echo "N.B.:	if option -m (mask) is used, each input image, e.g., PR-24A_mpr1, must be"
+echo "	paired with a 4dfp mask named, e.g., PR-24A_mpr1_mask"
+echo "N.B.:	execute "$program" after sucessful completion of newatl_init_4dfp"

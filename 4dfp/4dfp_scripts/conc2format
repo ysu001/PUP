@@ -1,0 +1,62 @@
+#!/bin/csh
+#$Header: /data/petsun4/data1/solaris/csh_scripts/RCS/conc2format,v 1.1 2008/06/01 05:22:14 avi Exp $
+#$Log: conc2format,v $
+# Revision 1.1  2008/06/01  05:22:14  avi
+# Initial revision
+#
+set program = $0; set program = $program:t
+
+@ verb = 0
+@ k = 0
+@ i = 1
+while ($i <= ${#argv})
+	set swi = `echo $argv[$i] | awk '{print substr($1,1,2)}'`
+	set arg = `echo $argv[$i] | awk '{print substr($0,3)}'`
+	switch ($swi)
+		case -v:
+			@ verb++;			breaksw;
+		default:
+		switch ($k)
+			case 0:
+				set conc = $argv[$i];	@ k++; breaksw;
+			case 1:
+				@ skip = $argv[$i];	@ k++; breaksw;
+			default:
+							@ k++; breaksw;
+		endsw
+	endsw
+	@ i++
+end
+if ($k < 2) goto USAGE
+
+if (! -e $conc) then
+	echo $program":	"$conc not found
+	exit -1
+endif
+@ n = `awk '/number_of_files/{print $NF}' $conc`
+
+grep file: $conc >! $$.lst
+gawk '{gsub(/4dfp.img/,"4dfp.ifh");gsub(/file:/,"");print}' $$.lst >! $$1.lst
+if ($verb) cat $$1.lst
+
+set format = ""
+@ k = 1
+while ($k <= $n)
+	set ifh = `head -$k $$1.lst | tail -1`
+	@ nf = `awk '/matrix size \[4\]/{print $NF}' $ifh`
+	@ mf = $nf - $skip
+	set format = $format`echo $skip $mf | awk '{printf("%dx%d+",$1,$2)}'`
+	if ($verb) echo $format
+	@ k++
+end
+/bin/rm $$*.lst
+
+condense $format
+exit
+
+USAGE:
+echo "usage:	"$program" <conc file> <(int) skip>"
+echo "e.g.:	"$program" vb13157_faln_dbnd_xr3d_atl.conc 4"
+echo "	option"
+echo "	-v	verbose mode"
+exit 1

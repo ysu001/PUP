@@ -1,0 +1,176 @@
+#!/bin/csh
+#$Header: /data/petsun4/data1/solaris/csh_scripts/RCS/epi2mpr2atl2_4dfp,v 1.1 2009/02/01 02:10:39 avi Exp $
+#$Log: epi2mpr2atl2_4dfp,v $
+# Revision 1.1  2009/02/01  02:10:39  avi
+# Initial revision
+#
+# Revision 1.5  2008/12/18  01:27:11  avi
+# correct several disabling bugs
+#
+# Revision 1.4  2008/07/21  15:03:15  mohanar
+# Modified usage to include -T and -S options.
+#
+# Revision 1.3  2007/02/27  18:17:22  mohanar
+# Added ability to pass in non-std targets with -T flag
+#
+# Revision 1.2  2007/02/21  04:28:20  avi
+# Solaris 10 compatible
+#
+# Revision 1.1  2004/06/29  02:43:47  avi
+# Initial revision
+#
+set idstr = '$Id: epi2mpr2atl2_4dfp,v 1.1 2009/02/01 02:10:39 avi Exp $'
+
+echo $idstr
+set program = $0; set program = $program:t
+if (${#argv} < 2) then
+	echo "Usage:	"$program" <epi_anat> <mpr_anat> [useold] [711-2<B|C|O|Y|K|L> OR  -T<target including path> -S<atlas space>]"
+	echo "e.g.:	"$program" 011220_vc8221_anat_ave 011220_vc8221_3739-2"
+	echo "e.g.:	"$program" 011220_vc8221_anat_ave 011220_vc8221_3739-2 -T/data/petsun23/data1/atlas/NP345_111[.4dfp.img] -S711-2B"
+	echo "N.B.:	named image files may include a path"
+	echo "N.B.:	named images must be in either ANALYZE 7.5 or 4dfp format; ANALYZE will be converted to 4dfp"
+	echo "N.B.:	the default target is 711-2B"
+	echo "N.B.:	-S specifies the atlas space to use. Atlas supported currently is 711-2B. -S must be used with -T option"
+	exit 1
+endif
+
+set date0	= `date`
+set usr		= `whoami`
+
+@ useold	= 0
+@ debug		= 0
+
+set wrkdir	= $cwd
+if (! $?RELEASE) then
+	set bindir = /data/petsun4/data1/solaris
+else
+	set bindir = $RELEASE
+endif
+if (! $?REFDIR)	then
+	set refdir = /data/petsun9/data2/petmri
+else
+	set refdir = $REFDIR
+endif
+set oristr	= (T C S)
+set modes	= (4099 4099 3075 2051 2051)
+
+set xxx = ($1 $2)
+set xxx = ($xxx:gr)
+set xxx = ($xxx:gr)
+set tmp = ($xxx:gh)
+set epi = $xxx[1]:t
+
+if (-d $tmp[1]:h) then
+	set epidir = `pushd $tmp[1]:h | awk '{print $1}'`
+else
+	set epidir = $cwd
+endif
+
+set mpr = $xxx[2]:t
+if (-d $tmp[2]:h) then
+	set mprdir = `pushd $tmp[2]:h | awk '{print $1}'`
+else
+	set mprdir = $cwd
+endif
+
+@ k = 1
+while ($k <= 2)
+	     if (-e $xxx[$k]:t.4dfp.img && -e $xxx[$k]:t.4dfp.ifh) then
+	else if (-e $xxx[$k]:t.img && -e $xxx[$k]:t.hdr) then
+		analyzeto4dfp $xxx[$k]:t
+	else if (-e $xxx[$k]:t.4dint.img && -e $xxx[$k]:t.4dint.hdr) then
+		analyzeto4dfp $xxx[$k]:t.4dint
+	else if (-e $xxx[$k].4dfp.img && -e $xxx[$k].4dfp.ifh) then
+		foreach e (img img.rec ifh)
+			ln -s $xxx[$k].4dfp.$e .
+		end
+	else if (-e $xxx[$k].img && -e $xxx[$k].hdr) then
+		/bin/cp $xxx[$k].{img,img.rec,hdr} .
+		analyzeto4dfp $xxx[$k]:t
+		/bin/rm $xxx[$k]:t.{img,img.rec,hdr}
+	else if (-e $xxx[$k].4dint.img && -e $xxx[$k].4dint.hdr) then
+		/bin/cp $xxx[$k].4dint.{img,img.rec,hdr} .
+		analyzeto4dfp $xxx[$k]:t.4dint
+		/bin/rm $xxx[$k]:t.4dint.{img,img.rec,hdr}
+	else	echo $xxx[$k] not found
+		exit -1
+	else
+	endif
+	@ k++
+end
+
+set target = "711-2B"
+#set echo
+foreach x (${argv[3-]})
+	switch ($x)
+	case debug:
+		@ debug++;
+		breaksw;
+	case useold:			# use existing t4file if present
+		@ useold++;
+		breaksw;
+	case 711-2?:
+		set target		= $x;
+		set targetpath		= $REFDIR/$x;
+		set targetswitch	= "-T"$targetpath
+		breaksw;
+	case -T*:
+		set targetpath		= `echo $x | awk '{print substr($1,3)}'`;
+		set target		= $targetpath:gt;
+		set target		= $target:gr			# trim off extensions
+		set target		= $target:gr
+		set target		= $target:gr
+		set targetswitch	= "-T"$targetpath
+		breaksw;
+	endsw
+end
+if ($debug) set echo
+
+set t4file = $mpr"_to_"$target"_t4"
+if ($useold && ! -e $t4file && -e $mprdir/$t4file) cp $mprdir/$t4file .
+if (! $useold || ! -e $t4file) mpr2atl_4dfp $mpr $targetswitch
+
+set t4file = $epi"_to_"$mpr"_t4"
+if ($useold && -e $epidir/$t4file) /bin/cp $epidir/$t4file .
+if (! $useold || ! -e $t4file) then
+	set log = $mpr"_"$program.log
+	date >!					$log
+	echo $0 $argv[1-] >>			$log
+	echo $idstr >>				$log
+	echo epi = $epidir/$epi >>		$log
+	echo mpr = $mprdir/$mpr >>		$log
+	echo target = $target >>		$log
+	echo targetswitch = $targetswitch >>	$log
+	cat $log
+
+	msktgen_4dfp $mpr $targetswitch
+	if ($status) exit $status
+
+	@ ori = `awk '/orientation/{print $NF - 1}' $mpr.4dfp.ifh`
+	t4_inv $bindir/$oristr[$ori]_t4 temp$$"_t4"
+	@ ori = `awk '/orientation/{print $NF - 1}' $epi.4dfp.ifh`
+	t4_mul $bindir/$oristr[$ori]_t4 temp$$"_t4" $t4file
+
+	@ k = 1
+	while ($k <= ${#modes})
+	echo	imgreg_4dfp $mpr $mpr"_mskt" $epi none $t4file $modes[$k] >> $log
+		imgreg_4dfp $mpr $mpr"_mskt" $epi none $t4file $modes[$k] >> $log
+		if ($status < 0) exit $status
+		@ k++
+	end
+	if (! $debug) /bin/rm $mpr"_msk"* temp$$"_t4"
+endif
+
+t4img_4dfp $t4file $epi $epi"_on_"$mpr -O$mpr
+if ($status < 0) exit $status
+
+t4_mul $epi"_to_"$mpr"_t4" $mpr"_to_"$target"_t4" $epi"_to_"$target"_t4"
+foreach O (111 222 333)
+	t4img_4dfp $epi"_to_"$target"_t4" $epi	$epi"_t88_"$O -O$O
+	ifh2hdr -r2000 $epi			$epi"_t88_"$O
+end
+
+echo "start time "$date0
+echo "end   time "`date`
+exit
+

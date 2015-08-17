@@ -1,0 +1,104 @@
+#!/bin/csh
+
+set idstr	= '$Id: newatl_init_4dfp,v 1.4 2010/03/10 23:34:16 avi Exp $'
+set program	= $0; set program = $program:t
+echo $idstr
+
+@ debug = 0
+@ usemask = 0
+######################
+# process command line
+######################
+@ k = 0
+@ i = 1
+while ($i <= ${#argv})
+	set swi = `echo $argv[$i] | awk '$1~/^-/{print substr($1,1,2)}'`
+	if (${#swi} > 0) then
+		set arg = `echo $argv[$i] | awk '{print substr($0,3)}'`
+		switch ($swi)
+			case -d:
+				@ debug++;		breaksw;
+			case -m:
+				@ usemask++;		breaksw;
+			default:
+				echo $swi option not recognized
+				goto USAGE
+				breaksw;
+		endsw
+	else
+		switch ($k)
+			case 0:
+				set t4list	= $argv[$i];	@ k++; breaksw;
+			case 1:
+				set newatl	= $argv[$i];	@ k++; breaksw;
+		endsw
+	endif
+	@ i++
+end
+if ($k < 2) goto USAGE
+echo "t4list = "$t4list
+echo "newatl = "$newatl
+if (! -e $t4list) then
+	echo $program": "$t4list not found
+	exit -1
+endif
+
+@ n = `wc -l $t4list | awk '{print $1}'`
+set patlst = $newatl.lst
+if (-e $patlst) /bin/rm $patlst
+touch $patlst
+@ k = 1
+while ($k <= $n)
+	set t4file = `head -$k $t4list | tail -1`
+	echo "t4file="$t4file
+	set mpr = `echo $t4file:t | awk '{l=index($1,"_to_");print substr($1,1,l-1)}'`
+	set dir = $t4file:h
+	echo "mpr="$mpr
+	if (! -e $mpr.4dfp.img || ! -e $mpr.4dfp.ifh) then
+		cp -p $dir/$mpr.4dfp.* .
+	endif
+	if (! -e $mpr.4dfp.img || ! -e $mpr.4dfp.ifh) then
+		echo $program": "$mpr not found
+		exit -1
+	endif
+if ($usemask) then
+	if (! -e ${mpr}_mask.4dfp.img || ! -e ${mpr}_mask.4dfp.ifh) then
+		cp -p $dir/${mpr}_mask.4dfp.* .
+	endif
+	if (! -e ${mpr}_mask.4dfp.img || ! -e ${mpr}_mask.4dfp.ifh) then
+		echo $program": "${mpr}_mask not found
+		exit -1
+	endif
+endif
+	/bin/cp $t4file $mpr"_to_"$newatl"_t4"
+	if ($usemask) then
+		echo $mpr"	t4="$mpr"_to_"$newatl"_t4	mask=${mpr}_mask"	>> $patlst
+	else
+		echo $mpr"	t4="$mpr"_to_"$newatl"_t4"				>> $patlst
+	endif
+	echo
+	@ k++
+end
+cat $patlst
+
+set echo
+t4imgs_4dfp $patlst	$patlst:r"_111" -O111 -@b
+ifh2hdr			$patlst:r"_111" -r1600
+exit
+
+USAGE:
+echo "usage:	"$program"	<t4list> <newatl>"
+echo "e.g.:	"$program"	symph-mpr_to_711-2B_t4.lst 711-2S"
+echo "	options"
+#echo "	-d	debug mode"
+echo "	-m	mask all input images"
+echo "N.B.:	<t4list> is a text file listing the absolute addresses of extant atlas transform"
+echo "	t4files corresponding to a set of structural images"
+echo "N.B.:	<newatl> specifies the name of the new atlas representative target image"
+echo "N.B.:	<t4list> itself and the t4files named in it may exist in other directories"
+echo "N.B.:	all images (*.4dfp.img and *.4dfp.ifh) referred to in <t4list> must exist"
+echo "	either in their original directory or in the current working directory -"
+echo "	"$program" will copy these images into the cwd as necessary"
+echo "N.B.:	if option -m (mask) is used, each input image, e.g., PR-24A_mpr1, must be"
+echo "	paired with a 4dfp mask named, e.g., PR-24A_mpr1_mask"
+echo "N.B.:	after sucessful completion of "$program" execute newatl_refine_4dfp <newatl>"

@@ -1,0 +1,187 @@
+#!/bin/csh
+# $Header: /data/petsun4/data1/solaris/csh_scripts/RCS/epi2t2w2mpr2atlv_4dfp,v 1.8 2005/08/12 23:53:50 avi Exp $
+# $Log: epi2t2w2mpr2atlv_4dfp,v $
+# Revision 1.8  2005/08/12  23:53:50  avi
+# $program; better usage; remove spurious 'end'
+#
+# Revision 1.7  2005/08/12  23:31:33  avi
+# generalize $target computation
+#
+# Revision 1.6  2002/06/25  00:31:46  avi
+# add atlas targets 711-2[KL]
+#
+# Revision 1.5  2000/10/24  03:23:15  avi
+# accommodate $mpr targets 711-2[YCO] and eliminate
+# computing $t2w"_to_711-2A_t4" and $epi"_to_711-2A_t4"
+#
+# Revision 1.4  1999/02/22  01:36:00  avi
+# eliminate usused definitions ref and refmsk
+# Revision 1.3  1999/02/11  00:31:07  avi
+# new maskimg_4dfp usage
+# Revision 1.2  1999/01/15  23:09:26  avi
+# remove refences to $lindir
+# Revision 1.1  1999/01/01  07:35:07  avi
+# Initial revision
+set idstr = '$Id: epi2t2w2mpr2atlv_4dfp,v 1.8 2005/08/12 23:53:50 avi Exp $'
+
+set program = $0; set program = $program:t
+echo $idstr
+if (${#argv} < 3) then
+	echo "Usage:	"$program" <epi_anat> <t2w_anat> <mpr_anat> [useold] [atlas_target]"
+	echo " e.g.,	"$program" stem9_anat_ave stem9_643-2 stem9_654-3 useold 711-2Y"
+	echo "N.B.:	Any argument may include a path, e.g., /data/petmr1/data7/stem/96_06_14_stem9/stem9_654-3"
+	echo "N.B.:	All named images must be in either ANALYZE or 4dfp format. ANALYZE will be converted to 4dfp"
+	echo "N.B.:	'useold' instructs "$program" to use existing t4 files"
+	echo "N.B.:	The default atlas_target is 711-2B"
+	exit 1
+endif
+
+set date0 = `date`
+set usr = `whoami`
+
+@ useold = 0
+@ debug = 0
+
+set wrkdir =	$cwd
+set bindir =	/data/petsun4/data1/solaris
+set refdir =	/data/petsun9/data2/petmri
+set oristr =	(T C S)
+
+set xxx = ($1 $2 $3)
+set xxx = ($xxx:gr)
+set xxx = ($xxx:gr)
+set tmp = ($xxx:gh)
+set epi = $xxx[1]:t
+if (-d $tmp[1]:h) then
+	set epidir = `pushd $tmp[1]:h | awk '{print $1}'`
+else
+	set epidir = $cwd
+endif
+set t2w = $xxx[2]:t
+if (-d $tmp[2]:h) then
+	set t2wdir = `pushd $tmp[2]:h | awk '{print $1}'`
+else
+	set t2wdir = $cwd
+endif
+set mpr = $xxx[3]:t
+if (-d $tmp[3]:h) then
+	set mprdir = `pushd $tmp[3]:h | awk '{print $1}'`
+else
+	set mprdir = $cwd
+endif
+
+@ k = 1
+while ($k <= 3)
+	     if (-e $xxx[$k]:t.4dfp.img && -e $xxx[$k]:t.4dfp.ifh) then
+	else if (-e $xxx[$k]:t.img && -e $xxx[$k]:t.hdr) then
+		$bindir/analyzeto4dfp $xxx[$k]:t
+	else if (-e $xxx[$k]:t.4dint.img && -e $xxx[$k]:t.4dint.hdr) then
+		$bindir/analyzeto4dfp $xxx[$k]:t.4dint
+	else if (-e $xxx[$k].4dfp.img && -e $xxx[$k].4dfp.ifh) then
+		foreach e (img img.rec ifh)
+			ln -s $xxx[$k].4dfp.$e .
+		end
+	else if (-e $xxx[$k].img && -e $xxx[$k].hdr) then
+		/bin/cp $xxx[$k].{img,img.rec,hdr} .
+		$bindir/analyzeto4dfp $xxx[$k]:t
+		/bin/rm $xxx[$k]:t.{img,img.rec,hdr}
+	else if (-e $xxx[$k].4dint.img && -e $xxx[$k].4dint.hdr) then
+		/bin/cp $xxx[$k].4dint.{img,img.rec,hdr} .
+		$bindir/analyzeto4dfp $xxx[$k]:t.4dint
+		/bin/rm $xxx[$k]:t.4dint.{img,img.rec,hdr}
+	else	echo $xxx[$k] not found
+		exit -1
+	else
+	endif
+	@ k++
+end
+
+set target = "711-2B"
+foreach x (${argv[3-]})
+	if ($x == "debug")	@ debug++
+	if ($x == "useold")	@ useold++		# use existing t4files if present
+	set xt = `echo $x | awk '{l=length ($1); print substr ($1,1,l-1);}'`	# isolate '711-2'
+	if ($xt == "711-2")	set target = $x
+end
+echo "target="$target
+
+set log = $mpr"_"$program.log
+touch				$log
+date >>				$log
+echo $0 $argv[1-] >>		$log
+echo $idstr >>			$log
+echo epi = $epidir/$epi >>	$log
+echo t2w = $t2wdir/$t2w >>	$log
+echo mpr = $mprdir/$mpr >>	$log
+echo "target="$target >>	$log
+tail -50 $log
+
+set t4file = $mpr"_to_"$target"_t4"
+if ($useold && ! -e $t4file && -e $mprdir/$t4file) cp $mprdir/$t4file .
+if (! $useold || ! -e $t4file) $bindir/mpr2atl_4dfp $mpr $target
+
+set t4file = $t2w"_to_"$mpr"_t4"
+if ($useold && -e $t2wdir/$t4file) /bin/cp $t2wdir/$t4file .
+if (! $useold || ! -e $t4file) then
+	if (! -e $mpr"_g11".4dfp.img || ! -e $mpr"_g11".4dfp.ifh) $bindir/gauss_4dfp $mpr 1.1
+	if (! -e $t2w"_g11".4dfp.img || ! -e $t2w"_g11".4dfp.ifh) $bindir/gauss_4dfp $t2w 1.1
+	if (! $debug || ! -e $mpr"_mskt".4dfp.img || ! -e $mpr"_mskt".4dfp.ifh) $bindir/msktgen_4dfp $mpr
+	if ($status < 0) exit $status
+
+	@ ori = `awk '/orientation/{print $NF - 1}' $mpr.4dfp.ifh`
+	$bindir/t4_inv $bindir/$oristr[$ori]_t4 temp$$_t4
+	@ ori = `awk '/orientation/{print $NF - 1}' $t2w.4dfp.ifh`
+	$bindir/t4_mul $bindir/$oristr[$ori]_t4 temp$$_t4 $t4file
+
+	@ mode = 1024 + 3
+	$bindir/imgreg_4dfp $mpr"_g11" none        $t2w"_g11" none $t4file $mode >> $log
+	@ mode = 1024 + 3
+	$bindir/imgreg_4dfp $mpr"_g11" $mpr"_mskt" $t2w"_g11" none $t4file $mode >> $log
+	@ mode = 1024 + 3 + 8 + 64		# t2w in-plane voxel size adjust
+	$bindir/imgreg_4dfp $mpr"_g11" $mpr"_mskt" $t2w"_g11" none $t4file $mode >> $log
+	@ mode = 8192 + 2048 + 3 + 8 + 64
+	$bindir/imgreg_4dfp $mpr"_g11" $mpr"_mskt" $t2w"_g11" none $t4file $mode >> $log
+	if ($status < 0) exit $status
+	if (! $debug) /bin/rm $mpr"_mskt"* $mpr"_g"*
+endif
+
+if (! -e $epi"_msk".4dfp.img || -e $epi"_msk".4dfp.ifh) then
+	echo computing $epi"_msk"
+	$bindir/gauss_4dfp $epi 0.3 msk$$
+	set epimax = `$bindir/imgmax_4dfp msk$$`
+	set thresh = `echo $epimax | awk '{print 0.2*$1}'`
+	$bindir/img2msk_4dfp $epi temp$$
+	$bindir/maskimg_4dfp temp$$ msk$$ -t$thresh $epi"_msk"
+	/bin/rm msk$$* temp$$*
+endif
+
+set t4file = $epi"_to_"$t2w"_t4"
+if ($useold && ! -e $t4file && -e $epidir/$t4file) cp $epidir/$t4file .
+if (! $useold || ! -e $t4file) then
+	if (! -e $t2w"_g11".4dfp.img || ! -e $t2w"_g11".4dfp.ifh) $bindir/gauss_4dfp $t2w 1.1
+	if (! -e $epi"_g11".4dfp.img || ! -e $epi"_g11".4dfp.ifh) $bindir/gauss_4dfp $epi 1.1
+
+	@ ori = `awk '/orientation/{print $NF - 1}' $t2w.4dfp.ifh`
+	$bindir/t4_inv $bindir/$oristr[$ori]_t4 temp$$_t4
+	@ ori = `awk '/orientation/{print $NF - 1}' $epi.4dfp.ifh`
+	$bindir/t4_mul $bindir/$oristr[$ori]_t4 temp$$_t4 $t4file
+
+	@ mode = 1024 + 3
+	$bindir/imgreg_4dfp $t2w"_g11" none $epi"_g11" none       $t4file $mode >> $log
+	@ mode = 1024 + 3
+	$bindir/imgreg_4dfp $t2w"_g11" none $epi"_g11" $epi"_msk" $t4file $mode >> $log
+	@ mode = 3072 + 3 + 8 + 64		# epi in-plane voxel size adjust
+	$bindir/imgreg_4dfp $t2w"_g11" none $epi"_g11" $epi"_msk" $t4file $mode >> $log
+	@ mode = 8192 + 2048 + 3 + 8 + 64
+	$bindir/imgreg_4dfp $t2w"_g11" none $epi"_g11" $epi"_msk" $t4file $mode >> $log
+	if ($status < 0) exit $status
+	if (! $debug) /bin/rm $t2w"_g11"* $epi"_msk"* $epi"_g11"* temp$$*
+endif
+
+$bindir/t4_mul $t2w"_to_"$mpr"_t4" $mpr"_to_"$target"_t4"	$t2w"_to_"$target"_t4"
+$bindir/t4_mul $epi"_to_"$t2w"_t4" $t2w"_to_"$target"_t4"	$epi"_to_"$target"_t4"
+$bindir/t4_mul $epi"_to_"$t2w"_t4" $t2w"_to_"$mpr"_t4"		$epi"_to_"$mpr"_t4"
+
+echo "start time "$date0
+echo "end   time "`date`
+exit

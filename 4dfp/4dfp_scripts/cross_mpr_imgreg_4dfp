@@ -1,0 +1,171 @@
+#!/bin/csh
+#$Header: /data/petsun4/data1/solaris/csh_scripts/RCS/cross_mpr_imgreg_4dfp,v 1.4 2010/05/28 22:26:57 avi Exp $
+#$Log: cross_mpr_imgreg_4dfp,v $
+# Revision 1.4  2010/05/28  22:26:57  avi
+# nawk -> gawk
+#
+# Revision 1.3  2007/06/25  00:11:58  avi
+# option -T
+#
+# Revision 1.2  2007/03/26  23:39:50  avi
+# correct usage
+#
+# Revision 1.1  2007/03/25  03:43:41  avi
+# Initial revision
+#
+set rcsid	= '$Id: cross_mpr_imgreg_4dfp,v 1.4 2010/05/28 22:26:57 avi Exp $'
+set program	= $0; set program = $program:t
+
+if (${#argv} < 3) then
+	echo "Usage:	"$program" <session1_abspath> <session2_abspath> <target>"
+	echo "e.g.:	"$program /data/disk1/P44W_16800_L1 /data/disk2/P44W_16800_L2 711-2L
+	echo "  or:	"$program /data/disk1/P44W_16800_L1 /data/disk2/P44W_16800_L2 /bmr01/01/nmrgrp/avi/P44W_C_111
+	echo "N.B.:	<target> may be of the form '711-2[B-Z]' OR '-T[mypath/]mytarget'"
+	echo "N.B.:	"$program "assumes that each session patid is <sessionpath>:t"
+	exit 1
+endif
+
+set dirs	= ($1 $2)
+set sessid	= ($dirs:gt)
+set targetpath	= ""
+@ useT = 0
+switch ($argv[3])
+	case 711-2?:
+		set target       = $argv[3]; breaksw;
+	case -T*:
+		set targetpath   = `echo $argv[3] | awk '{print substr($1,3)}'`
+		set targetpath   = $targetpath:r	# trim off extensions
+		set targetpath   = $targetpath:r
+		set target       = $targetpath:t
+		@ useT++
+		breaksw;
+endsw
+
+@ debug = 0
+@ m  = 4
+while ($m <= ${#argv})
+	switch ($argv[$m])
+	case setecho:
+		set echo;		breaksw;
+	case debug:
+		@ debug++;		breaksw;
+		breaksw;
+	endsw
+	@ m++
+end
+
+set modes	= (0 0 0 0 0)
+@ modes[1]	= 4096 + 256 + 3 
+@ modes[2]	= 1024 + 256 + 3 
+@ modes[3]	= 2048 + 256 + 3
+@ modes[4]	= 2048 + 256 + 3 + 8
+@ modes[5]	= 2048 + 256 + 3 + 8 + 8192
+
+echo "dirs"=$dirs
+echo "sessid"=$sessid
+echo "target="$target
+echo "targetpath="$targetpath
+
+set mpr1 = ("" "")
+set lsts = ("" "")
+#######################
+# get t4files and lists
+#######################
+@ k = 1
+while ($k <= 2)
+	if (! -d $dirs[$k]) then
+		echo $dirs[$k] not a directory
+		exit -1
+	endif
+	pushd $dirs[$k]
+	set lsts[$k] = $sessid[$k]"_mpr_n"?.lst
+	set mpr1[$k] = `head -1 $lsts[$k]`
+	popd
+	@ k++
+end
+
+########################################################
+# check for existence of session1 atlas transform t4file
+########################################################
+if (! -e $dirs[1]/$mpr1[1]_to_$target"_t4") then
+	echo $dirs[1]/$mpr1[1]_to_$target"_t4" not found
+	exit -1
+endif
+
+#################################################################
+# get t4files and lists and create MP-RAGE space session averages
+#################################################################
+@ k = 1
+while ($k <= 2)
+	pushd $dirs[$k]
+echo	t4imgs_4dfp $lsts[$k] $lsts[$k]:r -O$mpr1[$k]
+	t4imgs_4dfp $lsts[$k] $lsts[$k]:r -O$mpr1[$k]
+	if ($status) exit $status
+	ln -s $mpr1[$k]_to_$target"_t4" $lsts[$k]:r"_to_"$target"_t4"
+
+set useTstr = ""
+if ($useT) set useTstr = "-T"$targetpath
+echo	msktgen_4dfp $lsts[$k]:r $useTstr
+	msktgen_4dfp $lsts[$k]:r $useTstr
+	if ($status) exit $status
+	popd
+	@ k++
+end
+
+####################################
+# compute cross-session registration
+####################################
+pushd $dirs[2]			# into session 2 directory
+set t4file	= $mpr1[2]_to_$mpr1[1]_t4
+set log		= $mpr1[2]_to_$mpr1[1].log
+date						>! $log
+echo $rcsid					>> $log
+echo $program $argv[1-]				>> $log
+@ j = 1
+while ($j <= ${#modes})
+	echo	imgreg_4dfp $dirs[1]/$lsts[1]:r $dirs[1]/$lsts[1]:r"_mskt" $lsts[2]:r $lsts[2]:r"_mskt" $t4file $modes[$j]
+	echo	imgreg_4dfp $dirs[1]/$lsts[1]:r $dirs[1]/$lsts[1]:r"_mskt" $lsts[2]:r $lsts[2]:r"_mskt" $t4file $modes[$j] >> $log
+		imgreg_4dfp $dirs[1]/$lsts[1]:r $dirs[1]/$lsts[1]:r"_mskt" $lsts[2]:r $lsts[2]:r"_mskt" $t4file $modes[$j] >> $log
+	@ j++
+end
+
+#######################################
+# combine transforms for second session
+#######################################
+if (-d OLD) then
+	@ EOLD = 1
+else
+	mkdir OLD
+endif
+@ nmpr = `wc $lsts[2] | awk '{print $1}'`
+@ i = 1
+while ($i <= $nmpr)
+	set mpr = `head -$i $lsts[2] | tail -1 | awk '{print $1}'`
+	set rt4 = `head -$i $lsts[2] | tail -1 | gawk '{sub(/t4=/,"",$2);print $2}'`
+	echo "mpr="$mpr"	rt4="$rt4
+	if ($rt4 != "") then
+		t4_mul $rt4 $mpr1[2]_to_$mpr1[1]_t4 $mpr"_to_"$mpr1[1]_t4
+	endif
+	set atlt4 = $mpr"_to_"$target"_t4"
+	if (! ${?EOLD}) /bin/mv	$atlt4 OLD
+	t4_mul	$mpr"_to_"$mpr1[1]_t4 $dirs[1]/$mpr1[1]_to_$target"_t4" $atlt4
+	cat OLD/$atlt4 $atlt4
+	@ i++
+end
+popd				# out of session 2 directory
+
+########################################
+# create 111 atlas space averaged images
+########################################
+@ k = 1
+while ($k <= 2)
+	pushd $dirs[$k]
+	/bin/rm $dirs[$k]/$lsts[$k]:r"_mskt"*
+	set lst = $sessid[$k]"_mpr_n"?_atl.lst
+	t4imgs_4dfp $lst	$lst:r -O111
+	ifh2hdr -r1500		$lst:r
+	popd
+	@ k++
+end
+
+exit

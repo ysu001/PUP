@@ -1,0 +1,17 @@
+INTERFILE	:=
+version of keys	:= 3.3
+number format		:= float
+conversion program	:= t4imgs_4dfp
+number of bytes per pixel	:= 4
+imagedata byte order	:= bigendian
+orientation		:= 2
+number of dimensions   := 4
+matrix size [1]	:= 91
+matrix size [2]	:= 109
+matrix size [3]	:= 91
+matrix size [4]	:= 1
+scaling factor (mm/pixel) [1]	:= 2.000000
+scaling factor (mm/pixel) [2]	:= 2.000000
+scaling factor (mm/pixel) [3]	:= 2.000000
+mmppix	:=   2.000000 -2.000000 -2.000000
+center	:=    92.0000  -92.0000 -110.0000

@@ -1,0 +1,86 @@
+#!/bin/csh
+
+set rcsid	= '$Id: t4img_4dfp,v 1.9 2009/03/05 04:30:54 avi Exp $'
+echo $rcsid
+set program	= $0; set program = $program:t
+
+#set echo
+@ debug		= 0
+@ nflag		= 0
+set outfile	= ""
+set opts	= ""
+######################
+# process command line
+######################
+@ k = 0
+@ i = 1
+while ($i <= ${#argv})
+	switch ($argv[$i])
+		case -*:
+			set opts = ($opts $argv[$i])
+			switch ($argv[$i])
+			case -n:
+				@ nflag++; breaksw;
+			case -d:
+				@ debug++; breaksw;
+			endsw
+			breaksw;
+		default:
+		switch ($k)
+			case 0:
+				set t4file	= $argv[$i];	@ k++; breaksw;
+			case 1:
+				set imgfile	= $argv[$i];	@ k++; breaksw;
+			case 2:
+				set outfile	= $argv[$i];	@ k++; breaksw;
+		endsw
+	endsw
+	@ i++
+end
+if ($k < 2) goto USAGE
+set srgv = ($argv[1-])
+
+if ($t4file == "none") set t4file = ""
+if ($debug) then
+	echo number or args = $#argv
+	echo options are $opts
+	echo nflag=$nflag
+endif
+
+if ($imgfile:e == "img")	set imgfile = $imgfile:r
+if ($imgfile:e == "4dfp")	set imgfile = $imgfile:r
+if ($outfile == "") then
+	set outfile =	$imgfile"t"
+else
+	if ($outfile:e == "img")	set outfile = $outfile:r
+	if ($outfile:e == "4dfp")	set outfile = $outfile:r
+endif
+
+echo $imgfile"	t4="$t4file >! $outfile.lst
+echo	t4imgs_4dfp $outfile.lst $outfile $opts
+	t4imgs_4dfp $outfile.lst $outfile $opts
+if ($status) exit $status
+
+mv						$outfile.4dfp.img.rec temp$$
+echo rec $outfile.4dfp.img `date` `whoami` >!	$outfile.4dfp.img.rec
+echo $program $srgv >>				$outfile.4dfp.img.rec
+echo $rcsid >>					$outfile.4dfp.img.rec
+cat temp$$ >>					$outfile.4dfp.img.rec
+echo endrec `date` `whoami` >>			$outfile.4dfp.img.rec
+/bin/rm temp$$ $outfile.lst
+
+if ($nflag) then
+	grep "region names" $imgfile.4dfp.ifh >> $outfile.4dfp.ifh
+endif
+exit 0
+
+USAGE:
+echo "Usage:	"$program" <t4file> <imgfile> [outfile]"
+echo " e.g.,	"$program"  vce1_mprS_to_711-2B_t4	vce1_mprS.4dfp.img -O222"
+echo "   or,	"$program"  vce1_mprS_to_711-2B_t4 	vce1_mprS vce_mprS_711-2B -O222"
+echo "   or,	"$program"  none			vce1_mprS vce1_mprS_222 -O222"
+echo "N.B.:	4dfp filename extensions are optional"
+echo "N.B.:	default output filename = <imgfile>t"
+echo "N.B.:	"$program" is a wrapper for t4imgs_4dfp; options are listed by t4imgs_4dfp usage"
+echo "N.B.:	option -n causes fidl ROI names to be copied to the output ifh"
+exit 1

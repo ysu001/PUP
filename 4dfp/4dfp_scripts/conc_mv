@@ -1,0 +1,75 @@
+#!/bin/csh
+#$Header: /data/petsun4/data1/solaris/csh_scripts/RCS/conc_mv,v 1.2 2010/06/03 04:35:34 avi Exp $
+#$Log: conc_mv,v $
+# Revision 1.2  2010/06/03  04:35:34  avi
+# correct gawk instructions
+#
+# Revision 1.1  2010/06/03  00:14:19  avi
+# Initial revision
+#
+set program = $0; set program = $program:t
+
+@ verb = 0
+@ tmod = 0
+@ k = 0
+@ i = 1
+while ($i <= ${#argv})
+	set swi = `echo $argv[$i] | awk '{print substr($1,1,2)}'`
+	set arg = `echo $argv[$i] | awk '{print substr($0,3)}'`
+	switch ($swi)
+			case -v:
+			@ verb++;			breaksw;
+			case -t:
+			@ tmod++;			breaksw;
+		default:
+		switch ($k)
+			case 0:
+			set conc = $argv[$i];		@ k++; breaksw;
+			case 1:
+			set from = $argv[$i];		@ k++; breaksw;
+			case 2:
+			set to   = $argv[$i];		@ k++; breaksw;
+			default:
+							@ k++; breaksw;
+		endsw
+		endsw
+	@ i++
+end
+if ($k < 3) goto USAGE
+
+if (! -e $conc) then
+	echo $program": "$conc not found
+	exit -1
+endif
+
+#################
+# create sed file
+#################
+echo $from $to | gawk '{gsub(/\//,"\\/",$1); gsub(/\//,"\\/",$2); printf("s/%s/%s/g\n",$1,$2);}' >! $$.sed
+sed -f $$.sed $conc >! $$.conc
+
+##################################
+# optionally provide user feedback
+##################################
+if ($verb || $tmod) then
+	echo from:
+	cat $conc
+	echo to:
+	cat $$.conc
+endif
+
+#######
+# do it
+#######
+if (! $tmod) /bin/mv $$.conc $conc
+
+/bin/rm $$.*
+exit
+
+USAGE:
+echo "usage:	"$program" <conc file> <from> <to>"
+echo " e.g.:	"$program" TC26851_rmsp_faln_dbnd_xr3d_atl.conc /data/nil-bluearc/raichle/gusnard/np751 auto_evolve/AVI_TEST"
+echo "	option"
+echo "	-v	verbose mode"
+echo "	-t	practice mode (<conc file> not changed)"
+exit 1

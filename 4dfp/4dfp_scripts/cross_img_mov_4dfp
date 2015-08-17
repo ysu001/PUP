@@ -1,0 +1,71 @@
+#!/bin/csh
+# $Id: cross_img_mov_4dfp,v 1.6 2001/09/07 19:11:40 avi Exp $
+# $Log: cross_img_mov_4dfp,v $
+# Revision 1.6  2001/09/07  19:11:40  avi
+# expand scale field to %f12.6 to accommodate values up to 9999.999999
+#
+# Revision 1.5  1999/07/08  04:19:29  avi
+# always print scale field (=1.0 if scale not in input t4 files)
+#
+# Revision 1.4  1999/06/30  23:09:18  avi
+# Revision 1.3  1999/06/30  23:06:32  avi
+# $listall variable = 1
+# Revision 1.2  1999/06/30  05:05:59  avi
+# print only matfil formatted param6 lines
+# Revision 1.1  1999/06/30  00:36:36  avi
+
+set temp = $0; set program = $temp:t
+set bindir = /data/petsun4/data1/solaris
+
+@ n = ${#argv}
+if (! $n) then
+	echo "Usage:	$program image1 image2 ..."
+	echo " e.g.:	$program p2345ho1.img p2346ho1.4dfp.img p2347ho1.4dfp.img"
+	echo "   or,	$program p2345ho1 p2346ho1 p2347ho1"
+	echo "   or,	$program p2345*4dfp.img"
+	exit 1
+endif
+set trgv = (${argv[1-]})
+set srgv = ($trgv:gr)
+set srgv = ($srgv:gr)
+
+@ debug = 0
+@ listall = 1
+
+touch temp$$
+@ i = 1
+while ($i <= $n)
+	@ j = 1
+	while ($j <= $n)
+		if ($j == $i) then
+			@ j++
+			continue
+		endif
+		set pair = +${srgv[$i]}"-"${srgv[$j]}
+if ($debug)	echo i=$i j=$j pair=$pair
+		set t4file = ${srgv[$j]}"_to_"${srgv[$i]}"_t4"
+		if (! -e $t4file) then
+			echo $program": "$t4file" not found"
+			exit -1
+		endif
+		set string = `$bindir/t4_2_param6 $t4file | tail -1`
+if ($debug)	cat $t4file
+if ($debug)	echo $string
+		echo $pair	| awk '{printf "%-32s", $1}'				>> temp$$
+		echo $string	| awk '{for(k=2; k<=7; k++) printf("%10.4f", $k);}'	>> temp$$
+		awk 'BEGIN{s=1.} /scale/{s=$2} END{printf("%12.6f", s)}' $t4file	>> temp$$
+		echo ""									>> temp$$
+		@ j++
+	end
+	@ i++
+end
+
+if ($listall) then
+	cat temp$$
+	$bindir/genmovCK temp$$
+else
+	$bindir/genmovCK temp$$ m
+endif
+
+/bin/rm temp$$
+exit

@@ -1,0 +1,49 @@
+#!/bin/csh
+#$Header: /data/petsun4/data1/solaris/csh_scripts/RCS/chop_4dfp,v 1.1 2005/07/09 22:41:40 avi Exp $
+#$Log: chop_4dfp,v $
+# Revision 1.1  2005/07/09  22:41:40  avi
+# Initial revision
+#
+
+set program = $0; set program = $program:t
+set outroot = ""
+@ k = 0
+@ i = 1
+while ($i <= ${#argv})
+	set swi = `echo $argv[$i] | awk '{print substr($1,1,2)}'`
+	set arg = `echo $argv[$i] | awk '{print substr($0,3)}'`
+	switch ($swi)
+		case -o:
+			set outroot = $arg;		breaksw;
+		default:
+		switch ($k)
+			case 0:
+				set imgroot = $argv[$i];	@ k++; breaksw;
+			case 1:
+				set frame0 = $argv[$i];		@ k++; breaksw;
+			case 2:
+				set frame1 = $argv[$i];		@ k++; breaksw;
+		endsw
+	endsw
+	@ i++
+end
+if ($k < 3) goto USAGE
+
+if ($imgroot:e == "img")	set imgroot = $imgroot:r
+if ($imgroot:e == "4dfp")	set imgroot = $imgroot:r
+@ k = 1 + $frame1 - $frame0
+if ($k < 1) goto USAGE
+echo $imgroot $frame0 > $$.lst
+if ($outroot == "") set outroot = $imgroot"_frames"$frame0"to"$frame1
+paste_4dfp -ap$k $$.lst $outroot
+@ err = $status
+/bin/rm $$.lst
+if (! $err) ifh2hdr $outroot
+exit $err
+
+USAGE:
+echo "usage:	"$program" <(4dfp) stack> <(int) frame0> <(int) frame1>"
+echo "e.g.:	"$program" vb12345_b5_dbnd_xr3d[.4dfp[.img]] 4 68"
+echo "	option"
+echo "	-o<str>	specify output 4dfp fileroot (default = <stack>_frames<frame0>to<frame1>)"
+exit 1

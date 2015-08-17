@@ -1,0 +1,139 @@
+#!/bin/csh
+# $Header: /data/petsun4/data1/solaris/csh_scripts/RCS/whisker_prepare,v 1.13 2009/07/05 01:59:38 avi Exp $
+# $Log: whisker_prepare,v $
+# Revision 1.13  2009/07/05  01:59:38  avi
+# keep "-@ option" from being passed to whisker_4dfp
+#
+# Revision 1.12  2008/12/31  01:21:09  avi
+# correct linux incompatability
+#
+# Revision 1.11  2008/09/17  04:29:24  avi
+# replace dd with extract_frame_4dfp (linux compliance)
+#
+# Revision 1.10  2008/08/15  22:46:07  avi
+# use $RELEASE in addpath command
+#
+# Revision 1.9  2006/03/03  04:09:38  avi
+# update alpay.m path on wuchem side
+#
+# Revision 1.8  2003/11/26  23:50:02  avi
+# addpath for nil alpay.m
+#
+# Revision 1.7  2003/03/27  00:09:25  avi
+# made addpath in output .m script conditional
+#
+# Revision 1.6  2003/03/26  23:03:21  avi
+# modify 'reshape(testall,[nx ny nz])' to unconfuse - N.B.: alpay.m must be updated to match
+#
+# Revision 1.5  2002/05/01  00:17:09  avi
+# -E (eigenvalue, or, 12 column whisker_4dfp output) option
+#
+# Revision 1.4  2002/01/04  00:14:41  avi
+# better $dir computation and usage
+#
+# Revision 1.3  2001/06/26  23:00:27  avi
+# more complete matlab command file
+#
+# Revision 1.2  2001/06/25  23:13:31  avi
+# create whiskerinit.m
+#
+# Revision 1.1  2001/06/23  02:23:12  avi
+# Initial revision
+#
+set program = $0; set program = $program:r
+
+if (${#argv} < 2) then
+	echo "Usage:	"$program "[options] <dti_param_file> <dwi_4dfp>"
+	echo " e.g.,	"$program "-E /data/petsun4/data1/solaris/tp7_params.dat vols8_zperp_dwi[.4dfp.img]"
+	echo " N.B.:	<dwi_4dfp> filename root should not contain periods ('.')"
+	echo " N.B.:	options (e.g., -E) must come first and are passed to whisker_4dfp and 4dfptoanalyze"
+	exit 1
+endif
+
+##############################
+# pick up whisker_4dfp options
+##############################
+set opts = ()
+set endianstr = ""
+@ test = 1
+while ($test)
+	@ test = `echo $argv[1] | awk '{c=index($1,"-");if(c==1){print 1}else{print 0}}'`
+	if ($test) then
+		switch ($argv[1])
+			case -@*:
+				set endianstr = $argv[1];
+				breaksw;
+			default:
+				set opts = ($opts $argv[1]);
+				breaksw;
+		endsw
+		shift
+	endif
+end
+echo whisker_4dfp options=$opts
+set prmfile = $1
+echo whisker_4dfp prmfile=$prmfile
+#set echo
+set dwi = $2:t; set dwi = $dwi:r; set dwi = $dwi:r;
+set dir = $dwi:h
+if ($dir != $dwi) cd $dir
+
+#####################
+# get $dwi dimensions
+#####################
+set nx = `awk '/matrix size \[1\]/ {print $NF}' $dwi.4dfp.ifh`
+set ny = `awk '/matrix size \[2\]/ {print $NF}' $dwi.4dfp.ifh`
+set nz = `awk '/matrix size \[3\]/ {print $NF}' $dwi.4dfp.ifh`
+set nv = `awk '/matrix size \[4\]/ {print $NF}' $dwi.4dfp.ifh`
+echo $dwi dimensions $nx $ny $nz $nv
+
+###############
+# run diff_4dfp
+###############
+if (! -e $dwi"_dti".4dfp.img || ! -e $dwi"_dti".4dfp.ifh) then
+	diff_4dfp $prmfile $dwi
+	if ($status) exit $status
+endif
+
+##################
+# run whisker_4dfp
+##################
+whisker_4dfp $opts $prmfile $dwi
+
+#############################################
+# split dti volume into Dbar and Asigma parts
+#############################################
+extract_frame_4dfp $dwi"_dti" 1 -o$dwi"_Dbar"
+extract_frame_4dfp $dwi"_dti" 2 -o$dwi"_Asigma"
+foreach x ("_Dbar" "_Asigma")
+	scale_4dfp $dwi$x 1000 -ax1000 
+	4dfptoanalyze $endianstr $dwi$x"_x1000"
+	/bin/rm $dwi$x*.4dfp.*
+end
+
+##############################
+# create matlab specifics file
+##############################
+set nodash = `echo $dwi | gawk '{k=1; while (k>0) {k=sub(/-/,"_")}; print $1"_whisker";}'`
+set cmdfile = $nodash.m
+if (-e $cmdfile) /bin/rm $cmdfile;
+touch $cmdfile
+
+echo	"disp('Loading "$dwi"_whisker.dat...')"			>> $cmdfile
+echo	"nx = "$nx";"						>> $cmdfile
+echo	"ny = "$ny";"						>> $cmdfile
+echo	"nz = "$nz";"						>> $cmdfile
+echo	"fid=fopen('"$cwd/$dwi"_Asigma_x1000.4dint.img');"	>> $cmdfile
+echo	"testall=fread(fid,[nx*ny*nz],'int16');fclose(fid);"	>> $cmdfile
+echo	"testall=reshape(testall,[nx ny nz]);"			>> $cmdfile
+echo	"load -ascii "$cwd/$dwi"_whisker.dat;"			>> $cmdfile
+echo	"bigwhisker = "$nodash";"				>> $cmdfile
+echo	"clear "$nodash";"					>> $cmdfile
+echo	"addpath '"$RELEASE"'"					>> $cmdfile
+echo	"alpay"							>> $cmdfile
+
+cat $cmdfile
+unset echo
+echo "To see whisker plot run matlab and execute "$nodash
+
+exit

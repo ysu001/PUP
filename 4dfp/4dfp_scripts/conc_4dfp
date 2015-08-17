@@ -1,0 +1,120 @@
+#!/bin/csh
+#$Header: /data/petsun4/data1/solaris/csh_scripts/RCS/conc_4dfp,v 1.7 2008/02/03 03:40:30 avi Exp $
+#$Log: conc_4dfp,v $
+# Revision 1.7  2008/02/03  03:40:30  avi
+# nawk -> gawk (linux compliant)
+#
+# Revision 1.6  2007/02/14  15:59:51  mohanar
+# *** empty log message ***
+#
+# Revision 1.5  2007/02/14  04:14:39  avi
+# option -version
+#
+# Revision 1.4  2007/02/13  19:55:40  mohanar
+# Added if condition to check if any 4dfp files have been supplied as input.
+#
+# Revision 1.3  2005/09/20  01:20:54  avi
+# echo $rcsid to stdout
+#
+# Revision 1.2  2005/09/20  01:14:16  avi
+# -w option
+# retain path in addressed filenames
+#
+# Revision 1.1  2005/08/27  23:04:17  avi
+# Initial revision
+#
+set program = $0; set program = $program:t
+set rcsid = '$Id: conc_4dfp,v 1.7 2008/02/03 03:40:30 avi Exp $'
+echo $rcsid
+
+set lstfile = ""
+set files = ()
+@ usecwd = 1
+@ k = 0
+@ i = 1
+while ($i <= ${#argv})
+	set swi = `echo $argv[$i] | awk '{print substr($1,1,2)}'`
+	set arg = `echo $argv[$i] | awk '{print substr($0,3)}'`
+	switch ($swi)
+		case -v:
+			if ($arg == "ersion")  exit 0;
+							breaksw;
+		case -w:
+			set usecwd = 0;			breaksw;
+		case -l:
+			set lstfile = $arg;		breaksw;
+		default:
+		switch ($k)
+			case 0:
+				set outroot = $argv[$i];	@ k++; breaksw;
+			default:
+				set files = ($files $argv[$i]);	@ k++; breaksw;
+		endsw
+	endsw
+	@ i++
+end
+if ($k < 1) goto USAGE
+
+#################
+# read input list
+#################
+@ test = `echo $lstfile | awk '{print length ($1)}'`
+if ($test) then
+	if (! -r $lstfile) then
+		echo $lstfile not readable
+		exit -1
+	endif
+	echo Reading: $lstfile
+	@ l = `wc $lstfile | awk '{print $1}'`
+	@ k = 1
+	while ($k <= $l)
+		set file = `head -$k $lstfile | tail -1 | gawk '{sub(/@/,"");sub(/\*/,"");print;}'`
+		set files = ($files $file)
+		@ k++
+	end
+endif
+
+##################
+# create conc file
+##################
+@ n = ${#files}
+if ($outroot:e == "conc") set outroot = $outroot:r
+set outfile = $outroot.conc
+
+if ($n) then
+	echo "number_of_files: "$n >! $outfile
+	if ($status) exit $status
+	@ i = 1
+	while ($i <= $n)
+		set file = $files[$i]
+		if ($file:e == "img")   set file = $file:r
+		if ($file:e == "4dfp")  set file = $file:r
+		if ($usecwd) set file = $cwd/$file
+		echo "	file:"$file.4dfp.img >> $outfile
+		@ i++
+	end
+	echo	$outfile
+	cat	$outfile
+
+#################
+# create rec file
+#################
+	echo rec $outfile `date` `whoami`	>! $outfile.rec
+	echo $program $argv[1-]			>> $outfile.rec
+	echo $rcsid				>> $outfile.rec
+	echo endrec				>> $outfile.rec
+else
+	echo "no 4dfp files specified"
+	exit -1
+endif
+exit
+
+USAGE:
+echo "usage:	"$program" <(conc) outroot> <(4dfp) 1> <(4dfp) 2> ..."
+echo " e.g.:	"$program" vb13157_faln_dbnd_xr3d_atl vb13157_b?_faln_dbnd_xr3d_atl.4dfp.img"
+echo "	option"
+echo "	-w	supress inclusion of current working directory in listed file path"
+echo "	-l<str>	read input 4dfp list"
+echo "N.B.:	output conc file always has extension "'"'conc'"'
+echo "N.B.:	only files in or below the current working directory can be correctly addressed"
+exit 1

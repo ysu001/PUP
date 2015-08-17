@@ -1,0 +1,50 @@
+#!/bin/csh
+#$Header: /data/petsun4/data1/solaris/csh_scripts/RCS/extract_frame_4dfp,v 1.3 2005/04/13 02:17:51 avi Exp $
+#$Log: extract_frame_4dfp,v $
+# Revision 1.3  2005/04/13  02:17:51  avi
+# typo
+#
+# Revision 1.2  2005/04/13  02:02:51  avi
+# -o option
+#
+# Revision 1.1  2004/09/15  00:39:40  avi
+# Initial revision
+#
+
+set program = $0; set program = $program:t
+set outroot = ""
+@ k = 0
+@ i = 1
+while ($i <= ${#argv})
+	set swi = `echo $argv[$i] | awk '{print substr($1,1,2)}'`
+	set arg = `echo $argv[$i] | awk '{print substr($0,3)}'`
+	switch ($swi)
+		case -o:
+			set outroot = $arg;		breaksw;
+		default:
+		switch ($k)
+			case 0:
+				set imgroot = $argv[$i];	@ k++; breaksw;
+			case 1:
+				set iframe = $argv[$i];		@ k++; breaksw;
+		endsw
+	endsw
+	@ i++
+end
+if ($k < 2) goto USAGE
+
+if ($imgroot:e == "img")	set imgroot = $imgroot:r
+if ($imgroot:e == "4dfp")	set imgroot = $imgroot:r
+echo $imgroot $iframe > $$.lst
+if ($outroot == "") set outroot = $imgroot"_frame"$iframe
+paste_4dfp -ap1 $$.lst $outroot
+ifh2hdr $outroot
+/bin/rm $$.lst
+exit
+
+USAGE:
+echo "usage:	"$program" <(4dfp) stack> <(int) frame>"
+echo "e.g.:	"$program" CDR.5to1+ 3"
+echo "	option"
+echo "	-o<str>	specifiy output 4dfp fileroot (default = <stack>_frame<frame>)"
+exit 1

@@ -1,0 +1,115 @@
+#!/bin/csh
+#$Header: /data/petsun4/data1/solaris/csh_scripts/RCS/link_711,v 1.9 2008/08/21 21:11:04 avi Exp $
+#$Log: link_711,v $
+oRevision 1.9  2008/08/21  21:11:04  avi
+ochange "o" to "#" in Log listing
+o
+#Revision 1.8  2008/07/04  02:31:25  avi
+#add 711-2S (Symphony young adult mpr)
+#
+#Revision 1.7  2008/04/08  20:25:08  mohanar
+#Added a check before move.
+#
+#Revision 1.6  2007/10/27  02:30:07  mohanar
+#Added the 711-2V Fix
+#
+#Revision 1.5  2007/08/26  01:23:33  avi
+#better appearance
+#
+# Revision 1.4  2007/08/17  21:51:49  mohanar
+# Added user input section
+#
+# Revision 1.3  2007/07/20  20:44:17  mohanar
+# Revision 1.2  2007/07/20  20:42:23  mohanar
+# Added code to move 711-2?_mask.4dfp files
+#
+#$Id: link_711,v 1.9 2008/08/21 21:11:04 avi Exp $
+
+set targets = (C L Y O B V S)
+set masktargets = (G H)
+
+set refdir = $cwd
+if (! $?REFDIR) then
+	echo "Environment variable REFDIR is not set. Assumming atlas images are in the CWD [$cwd]"
+else
+	echo REFDIR = $REFDIR
+	set refdir = $REFDIR
+endif
+
+echo ""
+echo "#######################################################################################"
+echo "#                                    PURPOSE                                          #"
+echo "#######################################################################################"
+echo "This script re-creates links in $refdir for 711-2[CLYOBK] image files to their 111 images"
+echo "This script is expected to be executed only once and modifies the files in $refdir"
+echo
+echo "The script will back up the following existing files"
+echo "		711-2[CLYOBKV].4dfp.*"
+echo "		711-2[CLYOBKV]_mask.4dfp.*"
+echo "		711-2[GH]_mask.4dfp.*"
+echo "to $refdir/BAK_711-2_IN_222_SPACE before creating new links"
+echo ""
+echo "#######################################################################################"
+echo "#                                    WARNING                                          #"
+echo "#######################################################################################"
+echo "Launching this script without upgrading mpr2atl_4dfp to version 1.22 and higher will break mrp2atl_4dfp"
+
+echo ""
+###############
+# verify intent
+###############
+echo -n "Do you wish to run this script [y/n]:"
+switch ( $< )                     # Get a line from user
+	case y:
+		breaksw
+	default:
+		echo Doing nothing!
+		exit 0
+endsw
+
+echo "working directory $refdir"
+pushd $refdir
+
+set bakdir = BAK_711-2_IN_222_SPACE
+if (! -e $bakdir) then
+	mkdir $bakdir
+endif
+if (! -e $bakdir) then
+	echo "Could not create $bakdir.....QUITTING"
+	exit 1
+endif
+
+foreach alpha ($targets)
+	foreach ext (img ifh hdr img.rec)
+                if ( -e 711-2$alpha".4dfp."$ext) then
+		  /bin/mv 711-2$alpha".4dfp."$ext		$bakdir
+	        endif
+		if ( -e 711-2$alpha"_mask.4dfp."$ext) then
+		 /bin/mv 711-2$alpha"_mask.4dfp."$ext	$bakdir
+		endif 
+		ln -s 711-2$alpha"_111.4dfp."$ext 711-2$alpha".4dfp."$ext
+	end
+end
+
+#######################
+# move G H  mask files
+#######################
+foreach alpha ($masktargets)
+        if ( -e 711-2$alpha"_mask.4dfp."$ext)  then
+	 /bin/mv 711-2$alpha"_mask.4dfp."$ext		$bakdir
+	endif
+end
+
+
+########
+# 711-2K
+########
+	/bin/mv 711-2K.4dfp.*				$bakdir
+	/bin/mv 711-2K_mask.4dfp.*			$bakdir
+	foreach ext (img ifh hdr img.rec)
+		ln -s 789yo_atlas_111.4dfp.$ext 711-2K".4dfp."$ext
+	end
+popd
+
+exit 0
+

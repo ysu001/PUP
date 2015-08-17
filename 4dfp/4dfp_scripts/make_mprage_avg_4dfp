@@ -1,0 +1,52 @@
+#!/bin/csh
+#$Header: /data/petsun4/data1/solaris/csh_scripts/RCS/make_mprage_avg_4dfp,v 1.3 2004/06/30 19:56:55 avi Exp $
+#$Log: make_mprage_avg_4dfp,v $
+# Revision 1.3  2004/06/30  19:56:55  avi
+# eliminate need for atlas target argument
+#
+# Revision 1.2  2004/06/30  19:35:28  avi
+# Revision 1.1  2003/10/09  19:42:13  avi
+# Initial revision
+#
+set program = $0; set program = $program:t
+echo '$Id: make_mprage_avg_4dfp,v 1.3 2004/06/30 19:56:55 avi Exp $'
+if (${#argv} < 2) then
+	echo "Usage:	"$program" <study_id> <t4file_list>"
+	echo "e.g.:	"$program" NP659_all NP659_mpr_t4.lst"
+	echo "N.B.:	the output average will be named <study_id>_mpr_avg"
+	echo "N.B.:	"$program" assumes that the MP-RAGE 4dfp image files"
+	echo "	are in the same directories together their atlas transform t4files"
+	echo "N.B.:	<t4file_list> should list the t4files including path, e.g.:"
+	echo "vc12605c/PROCESSED/vc12605c_949-3_to_711-2Y_t4"
+	echo "vc12606c/PROCESSED/vc12606c_961-3_to_711-2Y_t4"
+	echo "vc12679c/PROCESSED/vc12679c_1181-3_to_711-2Y_t4"
+	echo '...'
+	echo "Here is an example of one way to begin creating <t4file_list>:"
+	echo "ls vc?????c/PROCESSED/*t4 | awk '"'$1'" !~/anat/' >! <t4file_list>"
+	exit 1
+endif
+
+set mprage_ave = $1"_mpr_ave"
+set lst = $2;
+
+cat $lst
+nawk '{sub(/_to_711-2._t4/,"");print}' $lst >! temp$$2
+
+awk '{print "mask="$1}' temp$$2	>! temp$$
+awk '{print "t4="$1}' $lst	>! temp$$1
+paste temp$$2 temp$$ temp$$1	>! $mprage_ave.lst
+/bin/rm temp$$*
+cat $mprage_ave.lst
+
+set echo
+t4imgs_4dfp $mprage_ave.lst $mprage_ave"_333" -O333
+if ($status) exit $status
+ifh2hdr $mprage_ave"_333" -r1500
+t4imgs_4dfp $mprage_ave.lst $mprage_ave"_222" -O222
+if ($status) exit $status
+ifh2hdr $mprage_ave"_222" -r1500
+t4imgs_4dfp $mprage_ave.lst $mprage_ave"_111" -O111
+if ($status) exit $status
+ifh2hdr $mprage_ave"_111" -r1500
+
+exit

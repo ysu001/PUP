@@ -1,0 +1,61 @@
+#!/bin/csh
+# $Header: /data/petsun4/data1/solaris/csh_scripts/RCS/epi2t1w_4dfp,v 1.2 2008/01/31 03:34:43 avi Exp $
+# $Log: epi2t1w_4dfp,v $
+# Revision 1.2  2008/01/31  03:34:43  avi
+# reorder arguments
+#
+# Revision 1.1  2008/01/30  05:34:49  avi
+# Initial revision
+#
+set idstr = '$Id: epi2t1w_4dfp,v 1.2 2008/01/31 03:34:43 avi Exp $'
+echo $idstr
+
+@ debug = 0
+set program = $0; set program = $program:t
+if (${#argv} < 3) then
+	echo "Usage:	"$program" <4dfp epi> <4dfp t1w> <tarstr>"
+	echo "e.g.:	"$program" 070630_4TT00280_t1w 070630_4TT00280_anat_ave -T/data/cninds01/data2/atlas/TRIO_Y_NDC"
+	echo "	options"
+	echo "N.B.:	"$program" assumes that the <4dfp t1w> atlas transform, e.g.,"
+	echo "	070630_4TT00280_t1w_to_TRIO_Y_NDC_t4 exists and is in the current working directory"
+	echo "N.B.:	<tarstr> is either '711-2?' or '-T/targetpath/target'"
+	exit 1
+endif
+
+set epi =	$argv[1]; set epi = $epi:r; set epi = $epi:r;
+set t1w =	$argv[2]; set t1w = $t1w:r; set t1w = $t1w:r; 
+set tarstr =	$argv[3]
+set t4file = $epi:t"_to_"$t1w:t"_t4"
+set log =    $epi:t"_to_"$t1w:t.log
+echo $program $argv[1-]	>! $log
+echo $idstr		>> $log
+date			>> $log
+echo "t1w="$t1w		>> $log
+echo "epi="$epi		>> $log
+echo "tarstr="$tarstr	>> $log
+
+msktgen_4dfp $t1w $tarstr
+
+set oristr =	(T C S)
+@ ori = `awk '/orientation/{print $NF - 1}' $t1w.4dfp.ifh`
+t4_inv $RELEASE/$oristr[$ori]_t4 temp$$_t4
+@ ori = `awk '/orientation/{print $NF - 1}' $epi.4dfp.ifh`
+t4_mul $RELEASE/$oristr[$ori]_t4 temp$$_t4 $t4file
+/bin/rm temp$$_t4
+
+set modes = (0 0 0 0)
+@ modes[1] = 4096 + 3
+@ modes[2] = 1024 + 3
+@ modes[3] = 2048 + 3
+@ modes[4] = 8192 + 3
+@ k = 1
+while ($k <= ${#modes})
+	echo	imgreg_4dfp  $t1w $t1w"_mskt" $epi none $t4file $modes[$k] >> $log
+		imgreg_4dfp  $t1w $t1w"_mskt" $epi none $t4file $modes[$k] >> $log
+	if ($status) exit $status
+	@ k++
+end
+t4img_4dfp $t4file $epi $epi"_on_"$t1w -O$t1w
+
+if (! $debug) /bin/rm $t1w"_mskt".4dfp*
+exit

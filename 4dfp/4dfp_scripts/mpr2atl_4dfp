@@ -1,0 +1,257 @@
+#!/bin/csh
+#$Header: /data/petsun4/data1/solaris/csh_scripts/RCS/mpr2atl_4dfp,v 1.26 2012/12/22 01:11:44 avi Exp $
+#$Log: mpr2atl_4dfp,v $
+# Revision 1.26  2012/12/22  01:11:44  avi
+# remove useold cp logic (causes error when file exists)
+#
+# Revision 1.25  2007/09/25  06:02:01  avi
+# correct typo in message "-S option ..."
+#
+# Revision 1.24  2007/08/26  02:01:58  avi
+# improve usage (and list version)
+# correct breaksw location in 711-2? parse
+#
+# Revision 1.23  2007/08/06  21:41:33  mohanar
+# Removed check on -S. Leaving it to default to 711-2B
+#
+# Revision 1.22  2007/07/20  20:26:02  mohanar
+# Removed reference to 711-2A, added to check to exit on 711-2A, added -T and -S options
+#
+# Revision 1.21  2007/03/15  00:57:53  avi
+# correct operation when target=711-2B
+#
+# Revision 1.20  2007/03/02  16:45:38  mohanar
+# Modified path to refdir from /data/petsun9/data2/petmri
+#
+# Revision 1.19  2007/02/27  18:17:01  mohanar
+# Added ability to pass in non-std target
+#
+# Revision 1.18  2007/02/21  06:40:12  avi
+# add 711-2F
+#
+# Revision 1.17  2007/02/21  03:59:36  avi
+# Solaris 10 compatible
+#
+# Revision 1.16  2006/02/10  06:44:21  avi
+# chmod to write enable after copy [TCS]_t4 from $bindir
+#
+# Revision 1.15  2005/08/12  20:12:41  avi
+# add 711-2V
+#
+# Revision 1.14  2005/06/18  01:21:56  avi
+# report abort due to error (ERR:)
+#
+set idstr = '$Id: mpr2atl_4dfp,v 1.26 2012/12/22 01:11:44 avi Exp $'
+set program = $0; set program = $program:t
+echo $idstr
+if (${#argv} < 1) then
+	echo "Usage:	"$program" <mpr_anat> [options]"
+	echo "e.g.,	"$program" vc1234_654-3[.4dfp.img]"
+	echo "e.g.,	"$program" vc1234_654-3[.4dfp.img] -T/data/petsun23/data1/atlas/NP345_111[.4dfp.img] -S711-2B"
+	echo "	options"
+	echo "	711-2<C|O|Y|K|L|G|H|V|F>	specify 711-2? series atlas representative target image"
+	echo "	-T<target including path>	specify arbitrary     atlas representative target image"
+	echo "	-S<atlas space>			specify atlas space (default=711-2B space)"
+	echo "	crossmodal	use cross-modal mpr->target registration"
+	echo "	useold		suppress recomputation of existing t4 files"
+	echo "	setecho		set echo"
+	echo "N.B.:	<mpr_anat> may include a path, e.g., /data/petmr1/data7/stem9/scout/654-3"
+	echo "N.B.:	<mpr_anat> must be in either ANALYZE short int or 4dfp format; ANALYZE will be converted to 4dfp"
+	exit
+endif
+
+set modes	= (0 0 0 0 0)
+@ modes[1]	= 1024 + 256 + 3
+@ modes[2]	= 1024 + 256 + 3
+@ modes[3]	= 3072 + 256 + 7
+@ modes[4]	= 2048 + 256 + 7
+@ modes[5]	= 2048 + 256 + 7
+
+@ debug		= 0
+@ useold	= 0
+@ crossmodal	= 0
+set atlas	= "711-2B"
+
+##############################
+#           NOTE	     #
+##############################
+#711-2C np292 combined old+young
+#711-2O np292 old
+#711-2Y np292 young
+#711-2K 12 selected 789yo children
+#711-2L 12 selected 789yo children + 12 selected np364 young adults
+#711-2G gleek 6YF+6YM+6OF+6OM
+#711-2H Hershey 12F+12M 7yo-18yo Sonata MPRAGE
+#711-2V young adult Allegra MPRAGE
+#711-2F LifespanII child+kid+adult
+
+set target	= 711-2B		#default target
+set targetpath	= ""
+set hasStudyTarget = 0
+set hasAtlas	= 0
+@ n = ${#argv}
+@ m = $n
+while ($m > 0)
+	switch ($argv[$m])
+	case setecho:
+		set echo;		breaksw;
+	case crossmodal:
+		@ crossmodal++;		breaksw;
+	case debug:
+		@ debug++;		breaksw;
+	case useold:			# use existing t4file
+		@ useold++;		breaksw;
+	case 711-2?:
+		set target	= $argv[$m];
+		set atlas	= 711-2B;
+		set hasAtlas	= 1;
+		breaksw;
+	case -T*:
+		set targetpath	= `echo $argv[$m] | awk '{print substr($1,3)}'`;
+		set target	= $targetpath:gt;
+		set target	= $target:gr			# trim off extensions
+		set target	= $target:gr
+		set target	= $target:gr
+		set hasStudyTarget = 1;
+		breaksw;
+	case -S*:
+		set atlas	= `echo $argv[$m] | awk '{print substr($1,3)}'`;
+		set hasAtlas 	= 1;
+		breaksw;
+	endsw
+	@ m--
+end
+if ($target == "711-2A") then
+	echo unsupported target
+	exit -1;
+endif
+if ($hasStudyTarget == 1) then
+	if ($hasAtlas == 0) then
+		echo "-S option not used; atlas space set to default="$atlas
+	else
+		if ($atlas != "711-2B") then
+			echo $atlas atlas space is unsupported 
+			exit -1;
+		endif
+	endif
+endif
+
+set wrkdir	= $cwd
+if (! $?RELEASE) then
+	set bindir = /data/petsun4/data1/solaris
+else
+	set bindir = $RELEASE
+endif
+if (! $?REFDIR)	then
+	set refdir = /data/petsun43/data1/atlas
+else
+	set refdir = $REFDIR
+endif
+set oristr	= (T C S)
+set date0	= `date`
+set usr		= `whoami`
+echo "target="$target "atlas="$atlas
+
+set refmsk =	$refdir/$atlas"_mask_g5_111z"
+if (! -e $refmsk.4dfp.img || ! -e $refmsk.4dfp.ifh) then
+	echo mask for $atlas not found
+	exit -1
+endif
+
+switch ($target)
+	case 711-2?:
+		set ref =	$refdir/$target
+		breaksw;
+	default:
+		set ref =	$targetpath
+endsw
+
+set mpr = $1:t
+if ($mpr:e == "img")	set mpr = $mpr:r
+if ($mpr:e == "4dfp")	set mpr = $mpr:r
+if (-d $1:h) then
+	set mprdir = `pushd $1:h | awk '{print $1}'`
+else
+	set mprdir = $wrkdir
+endif
+echo "mprdir="$mprdir"	mpr="$mpr
+
+     if (-e $mpr.4dfp.img && -e $mpr.4dfp.ifh) then
+else if (-e $mpr.img && -e $mpr.hdr) then
+	analyzeto4dfp $mpr
+else if (-e $mpr.4dint.img && -e $mpr.4dint.hdr) then
+	analyzeto4dfp $mpr.4dint
+else if (-e $mprdir/$mpr.4dfp.img && -e $mprdir/$mpr.4dfp.ifh) then
+	foreach e (img img.rec ifh)
+		ln -s $mprdir/$mpr.4dfp.$e .
+	end
+else if (-e $mprdir/$mpr.img && -e $mprdir/$mpr.hdr) then
+	/bin/cp $mprdir/$mpr.{img,img.rec,hdr} .
+	analyzeto4dfp $mpr
+	/bin/rm $mpr.{img,img.rec,hdr}
+else if (-e $mprdir/$mpr.4dint.img && -e $mprdir/$mpr.4dint.hdr) then
+	/bin/cp $mprdir/$mpr.4dint.{img,img.rec,hdr} .
+	analyzeto4dfp $mpr.4dint
+	/bin/rm $mpr.4dint.{img,img.rec,hdr}
+else	echo $mprdir/$mpr not found
+	exit -1
+endif
+@ ori = `awk '/orientation/{print $NF - 1}' $mpr.4dfp.ifh`
+
+set log = $wrkdir/$mpr"_to_"$target".log"
+date >!				$log
+echo $0 $argv[1-] >>		$log
+echo $idstr >>			$log
+echo mprdir = $mprdir >>	$log
+
+set t4file = $mpr"_to_"$target"_t4"
+
+if ($crossmodal) then
+	@ k = 1
+	while ($k <= ${#modes})
+		@ modes[$k] -= 256
+	@ k++
+	end
+endif
+
+if (! $useold || ! -e $t4file) then
+	if (! -e $mpr"_g11".4dfp.img || ! -e $mpr"_g11".4dfp.img.rec) then
+	echo	gauss_4dfp $mpr 1.1
+		gauss_4dfp $mpr 1.1
+		if ($status) goto ERR;
+	endif
+	foreach e (img img.rec ifh)
+		/bin/cp $mpr.4dfp.$e $mpr"_msk".4dfp.$e
+	end
+	zero_lt_4dfp 1 $mpr"_msk"
+	if ($status) goto ERR;
+echo	/bin/cp $bindir/$oristr[$ori]_t4 $t4file
+	/bin/cp $bindir/$oristr[$ori]_t4 $t4file
+	chmod 664			 $t4file
+
+	set usemsk = ("none" "none" $refmsk $refmsk $refmsk)
+	@ k = 1
+	while ($k <= ${#modes})
+		if ($debug) then
+			imgreg_4dfp $ref $usemsk[$k] $mpr"_g11" $mpr"_mskz" $t4file $modes[$k]
+			if ($status) goto ERR;
+		else
+			imgreg_4dfp $ref $usemsk[$k] $mpr"_g11" $mpr"_mskz" $t4file $modes[$k] >> $log
+			if ($status) goto ERR;
+		endif
+		@ k++
+	end
+	if (! $debug) /bin/rm $mpr"_msk"*
+endif
+
+echo "start time "$date0
+echo "end   time "`date`
+exit
+
+ERR:
+if ($debug) then
+	echo $program": execution aborted due to procedural/write error"
+else
+	echo $program": execution aborted due to procedural/write error" >> $log
+endif
+exit -1

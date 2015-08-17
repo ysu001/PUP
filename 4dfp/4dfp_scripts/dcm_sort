@@ -1,0 +1,253 @@
+#!/bin/csh
+#$Header: /data/petsun4/data1/solaris/csh_scripts/RCS/dcm_sort,v 1.18 2013/03/03 06:37:52 avi Exp $
+#$Log: dcm_sort,v $
+# Revision 1.18  2013/03/03  06:37:52  avi
+# option -d
+#
+# Revision 1.17  2012/05/16  20:03:35  avi
+# always use gawk, even on Solaris
+#
+# Revision 1.16  2012/02/14  23:37:39  avi
+# trap "*" in ID Series Description and convert to "star"
+#
+# Revision 1.15  2011/07/28  00:19:07  avi
+# protect aginst "?" in ID Series Description text
+#
+# Revision 1.14  2010/01/08  04:20:15  avi
+# enable user to specify $dcmdir using arelative address
+#
+# Revision 1.13  2008/10/12  03:42:33  avi
+# correct ls bug
+# used nawk gawk according to OS
+# revise listing format
+#
+# Revision 1.12  2008/07/25  02:28:41  avi
+# nawk -> gawk (linux compliant)
+#
+# Revision 1.11  2008/01/24  01:32:27  avi
+# make robust in face of huge number of dicom files
+#
+# Revision 1.10  2008/01/23  04:37:51  avi
+# option -t (toggle use of -t in call to dcm_dump_file)
+#
+# Revision 1.9  2006/12/06  09:17:14  avi
+# protect descrip variable against '[' and ']' in ID Series Description field
+#
+# Revision 1.8  2006/07/14  02:51:52  avi
+# option -r
+#
+# Revision 1.7  2006/06/21  23:46:40  avi
+# change usage of $filecnt variable to allow sorting of non-consecutive studies
+#
+# Revision 1.6  2006/02/28  07:48:18  avi
+# protect against null sequence and descriptor strings
+#
+# Revision 1.5  2006/02/19  01:07:02  avi
+# filename search now only requirement is start with 7 numbers
+# drop assumption that each study has at least 3 dicom files
+#
+# Revision 1.4  2006/02/14  03:22:41  avi
+# option -c (copy instead of link)
+# option -p (select patient-specific dicom files)
+# add dicom filecount to permanent list
+#
+set program = $0; set program = $program:t;
+set rcsid = '$Id: dcm_sort,v 1.18 2013/03/03 06:37:52 avi Exp $'
+echo $rcsid
+
+@ debug		= 0
+@ copy		= 0
+@ k		= 0
+@ i		= 1
+@ uset		= 1
+while ($i <= ${#argv})
+	set swi = `echo $argv[$i] | awk '{print substr($1,1,2)}'`
+	set arg = `echo $argv[$i] | awk '{print substr($0,3)}'`
+	switch ($swi)
+		case -c:
+			@ copy++;		breaksw;
+		case -d:
+			@ debug++;		breaksw;
+		case -t:
+			@ uset = 0;		breaksw;
+		case -p:
+			set patname = $arg;	breaksw;
+		case -r:
+			set dcmroot = $arg;	breaksw;
+		default:
+		switch ($k)
+			case 0:
+				set dcmdir = $argv[$i];	@ k++; breaksw;
+			default:			breaksw;
+		endsw
+	endsw
+	@ i++
+end
+if ($k < 1) then
+	echo "Usage:	"$program" <dicom_directory>"
+	echo "e.g.,	"$program" /data/petsun52/data1/JHILL/04271737"
+	echo "e.g.,	"$program" /cdrom/botv/10251349 -p930589002 -c"
+	echo "	options"
+	echo "	-d	verbose debug mode"
+	echo "	-c	copy files (default symbolically link)"
+	echo "	-t	toggle use of -t in call to dcm_dump_file (default ON)"
+	echo "	-r<str>	take files with filenames starting with specified string (default is 7 digits)"
+	echo "	-p<str>	take files only with dicom field 'PAT Patient Name' matching specified string"
+	echo "N.B.:	"$program" removes existing single study subdirectories"
+	exit 1
+endif
+if (! -d $dcmdir) then
+	echo $program": "$dcmdir not a directory
+	exit -1
+endif
+if (`echo $dcmdir | awk '{if(substr($0,1,1)!="/")print 1}'`) set dcmdir = $cwd/$dcmdir
+set wrkdir = $cwd
+
+######################
+# list all dicom files
+######################
+pushd $dcmdir
+ls -1 >! $wrkdir/$$.preprelst
+if ($?dcmroot) then
+	echo "dcmroot="$dcmroot
+	cat $wrkdir/$$.preprelst | grep $dcmroot | gawk '{sub(/\*/,"");print}' | sort -nr >! $wrkdir/$$.prelst
+else
+	cat $wrkdir/$$.preprelst | gawk '$1~/[0-9][0-9][0-9][0-9][0-9][0-9][0-9]/{sub(/@/,"");sub(/\*/,"");print}' \
+	| sort -nr >! $wrkdir/$$.prelst
+endif
+@ n = `wc $wrkdir/$$.prelst | awk '{print $1}'`;
+echo "total number of dicom files="$n
+
+set command = dcm_dump_file
+if ($uset) set command = $command" -t"
+################################
+# select $patname specific files
+################################
+if (${?patname}) then
+	echo "selecting patient specific ("$patname") dicom files"
+	touch $wrkdir/$$.lst
+	@ k = 1
+	while ($k <= $n)
+		echo $k | awk '{if ($1%100==0)printf ("%d", $1);else printf (".")}'
+		set f = `head -$k $wrkdir/$$.prelst | tail -1`
+		set string = `$command $f | grep "PAT Patient Name" | awk '{l=index($0,"ame");print substr($0,l+5);}'`
+		if ($string == $patname) echo $f >> $wrkdir/$$.lst
+		@ k++
+	end
+	@ n = `wc $wrkdir/$$.lst | awk '{print $1}'`;
+	echo | awk '{printf("\n");}'
+	echo "total number of patient specific ("$patname") dicom files="$n
+else
+	cp $wrkdir/$$.prelst $wrkdir/$$.lst
+endif
+
+########################
+# find all study numbers
+########################
+set studies = ();
+set sequens = ();
+set descrip = ();
+set filecnt = ();
+@ nstudy = 0
+@ k = 1
+while ($k <= $n)
+	if ($debug) echo "k="$k
+	set f = `head -$k $wrkdir/$$.lst | tail -1`
+	if ($debug) echo $f
+	@ istudy = `$command $f | grep "REL Series Number" | awk '{l=index($0,"ber");print substr($0,l+5);}'`
+	if ($debug) echo "istudy="$istudy
+	@ j = 1; @ found = 0;
+	while ($j <= $nstudy)
+		if ($istudy == $studies[$j]) @ found = 1;
+		@ j++
+	end
+	if ($found == 0) then
+		set studies = ($studies $istudy)
+		set filecnt = ($filecnt 0)
+		set string = `$command $f | grep "ACQ Sequence Name" | gawk '{gsub(/\*/,"");l=index($0,"ame");print substr($0,l+5);}'`
+		if ($string == "") set string = "none"
+		set sequens = ($sequens $string)
+		set string = `$command $f | grep "ID Series Description" | gawk '{gsub(/\[/,"");gsub(/\?/,"");gsub(/\]/,"");gsub(/ /,"");gsub(/*/,"star");l=index($0,"ion");print substr($0,l+5);}'`
+		if ($string == "") set string = "none"
+		set descrip = ($descrip $string)
+		@ nstudy++
+	endif
+	@ k++
+end
+echo "number of studies="$nstudy
+
+######################################
+# create study specific subdirectories
+######################################
+@ i = 1
+while ($i <= ${#studies})
+	if (-e $wrkdir/study$studies[$i]) /bin/rm -r $wrkdir/study$studies[$i]
+	mkdir $wrkdir/study$studies[$i]
+	@ i++
+end
+
+############################################################
+# link/copy original dicom files to appropriate subdirectory
+############################################################
+echo sorting $n dicom files
+touch $wrkdir/$$.null
+@ k = 1
+while ($k <= $n)
+	echo $k | awk '{if ($1%100==0)printf ("%d", $1);else printf (".")}'
+	set f = `head -$k $wrkdir/$$.lst | tail -1`
+	@ istudy = `$command $f | grep "REL Series Number" | awk '{l=index($0,"ber");print substr($0,l+5);}'`
+	if (-e $wrkdir/study$istudy) then
+		pushd $wrkdir/study$istudy	>> $wrkdir/$$.null
+		if ($copy) then
+			cp -p $dcmdir/$f .
+		else
+			ln -s $dcmdir/$f .
+		endif
+		popd				>> $wrkdir/$$.null
+		@ i = 1
+		while ($i <= ${#studies}) 
+			if ($istudy == $studies[$i]) @ filecnt[$i]++
+			@ i++
+		end
+	endif
+	@ k ++
+end
+echo | awk '{printf("\n");}'
+
+if ($debug) then
+	echo "number of studies="$nstudy
+	echo "studies="$studies
+	echo "sequens="$sequens
+	echo "descrip="$descrip
+	echo "filecnt="$filecnt
+endif
+#################################
+# create permanent study key file
+#################################
+touch $wrkdir/$$.tmp; touch $wrkdir/$$.cnt
+@ i = 1
+while ($i <= ${#studies})
+	echo $studies[$i]"	"$sequens[$i]"	"$descrip[$i]"	"$filecnt[$i] >> $wrkdir/$$.tmp
+	@ i++
+end
+set tail = $dcmdir:t
+sort -n	$wrkdir/$$.tmp | gawk '{printf("%-5d%-15s%-40s%5d\n",$1,$2,$3,$4)}' >! $wrkdir/$tail.studies.txt
+cat										$wrkdir/$tail.studies.txt
+
+popd >> $wrkdir/$$.null
+#################################
+# set permissions on copied files
+#################################
+if ($copy) then
+	foreach d (study*)
+		pushd $d	>> $wrkdir/$$.null
+		chmod 664 *
+		popd		>> $wrkdir/$$.null
+	end
+endif
+
+##########
+# clean up
+##########
+rm $$.*
+exit

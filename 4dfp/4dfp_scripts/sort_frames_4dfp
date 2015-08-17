@@ -1,0 +1,47 @@
+#!/bin/csh
+#$Header: /data/petsun4/data1/solaris/csh_scripts/RCS/sort_frames_4dfp,v 1.1 2003/06/18 02:58:19 avi Exp $
+#$Log: sort_frames_4dfp,v $
+# Revision 1.1  2003/06/18  02:58:19  avi
+# Initial revision
+#
+set idstr = '$Id: sort_frames_4dfp,v 1.1 2003/06/18 02:58:19 avi Exp $'
+echo $idstr
+
+set program = $0; set program = $program:t
+if (${#argv} < 1) then
+	echo "Usage:	"$program" <(4dfp) file>"
+	echo " e.g.:	"$program detvib14_b2
+	exit 1
+endif
+
+set fileroot = $1; set fileroot = $fileroot:r; set fileroot = $fileroot:r;
+if (! -e $fileroot.4dfp.img || ! -e $fileroot.4dfp.ifh || ! -e $fileroot.4dfp.img.rec) then
+	echo $fileroot not found
+	exit -1
+endif
+
+@ nframe = `awk '/matrix size \[4\]/{print $NF}' $fileroot.4dfp.ifh`
+echo $fileroot "nframe="$nframe
+
+touch $$sort
+@ k = 1
+while ($k <= $nframe)
+	set imafile = `awk '/FileName/{if($2 == iframe) print $NF}' iframe=$k $fileroot.4dfp.img.rec`
+	set time = `strings $imafile | nawk 'BEGIN{nr=0};/TimeAfterStart/{nr=NR+1};nr==NR{print $1}'`
+	echo $k $time >> $$sort
+	@ k++
+end
+sort -n -k 2,2 $$sort > $$sort1
+
+touch $$sort0
+@ k = 1
+while ($k <= $nframe)
+	echo $fileroot >> $$sort0
+	@ k++
+end
+
+paste  $$sort0  $$sort1 > $$sort2
+paste_4dfp -ap1 $$sort2 $fileroot"_sort"
+
+/bin/rm $$sort*
+exit

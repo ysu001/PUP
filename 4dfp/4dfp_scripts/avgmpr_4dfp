@@ -1,0 +1,268 @@
+#!/bin/csh
+# $Header: /data/petsun4/data1/solaris/csh_scripts/RCS/avgmpr_4dfp,v 1.26 2009/04/15 01:15:11 avi Exp $
+# $Log: avgmpr_4dfp,v $
+# Revision 1.26  2009/04/15  01:15:11  avi
+# make robust with respect to embedded filename '.'s
+# eliminate acceptance of non-4dfp input
+#
+# Revision 1.25  2007/06/18  00:09:29  avi
+# remove "debug" from call to mpr2atl_4dfp
+#
+# Revision 1.24  2007/04/18  21:36:46  mohanar
+# Added status check after mpr2atl is called.
+#
+# Revision 1.23  2007/04/13  18:41:53  mohanar
+# Fixed missing targetswitch parameter.
+#
+# Revision 1.22  2007/03/02  16:43:52  mohanar
+# Added return status checks
+#
+# Revision 1.21  2007/02/27  18:16:26  mohanar
+# Added ability to passin non-std targets
+#
+# Revision 1.20  2007/02/21  06:39:13  avi
+# add 711-2F
+#
+# Revision 1.19  2007/02/21  04:24:34  avi
+# Solaris 10 compatible
+#
+# Revision 1.18  2005/06/12  03:39:36  avi
+# update usage to reflect possibility of targets 711-2G and 711-2H
+#
+# Revision 1.17  2002/06/25  00:20:41  avi
+# generalize target specification (to accommodate 711-2[K|L])
+# remove -atrophy option
+#
+# Revision 1.16  2000/07/13  02:32:07  avi
+# fix "771-2Y" typo
+#
+# Revision 1.15  1999/11/28  01:10:24  avi
+# accept atlas target t4_files 711-2C 711-2Y 711-2O (in addition to 711-2B)
+#
+# Revision 1.14  1999/11/07  01:51:22  avi
+# add -O333 resampled output
+# 4dfptoanalyze -> ifh2hdr
+#
+# Revision 1.13  1999/03/05  21:06:39  avi
+# add "_t88" trailer to 111 and 222 output images
+#
+# Revision 1.12  1999/02/22  01:41:20  avi
+# eliminate usused definitions ref and refmsk
+#
+# Revision 1.11  1999/01/15  23:03:19  avi
+# remove refences to $lindir
+# Revision 1.10  1999/01/08  01:41:47  avi
+# allow operation with only 1 input image
+# Revision 1.9  1999/01/01  07:17:25  avi
+# O333.3 -> O222
+# O/data/petsun4/data1/solaris/111h
+# Revision 1.8  1998/12/31  06:09:38  avi
+# ln -s 4dfp files in other directories instead of cp
+# Revision 1.7  1998/12/31  05:53:44  avi
+# consolidate t4imgs_4dfp stage
+# Revision 1.6  1998/12/31  05:27:39  avi
+# Solaris
+# Revision 1.5  1998/12/16  03:48:18  avi
+# correct switch detection so it see "atrophy"
+# O333.4 -> O333.3
+# Revision 1.4  1998/12/07  06:28:37  avi
+# atrophy option
+# Revision 1.3  1998/11/25  06:18:11  avi
+# optional average file suppression ('none')
+# useold
+set idstr = '$Id: avgmpr_4dfp,v 1.26 2009/04/15 01:15:11 avi Exp $'
+
+set program =	$0; set program = $program:t;
+
+set wrkdir =	$cwd
+if (! $?RELEASE) then
+	set bindir = /data/petsun4/data1/solaris
+else
+	set bindir = $RELEASE
+endif
+
+set oristr =	(T C S)
+
+@ debug = 0
+@ useold = 0
+set target = "711-2B"
+set targetswitch = ""
+
+@ n = ${#argv}
+@ m = $n
+while ($m > 0)
+	switch ($argv[$m])
+	case useold:
+		@ useold++;		@ n--; breaksw;
+	case 711-2?:
+		set target       = $argv[$m];
+		set targetswitch = $target
+					@ n--; breaksw;
+	case -T*:
+		set targetpath   = `echo $argv[$m] | awk '{print substr($1,3)}'`;
+		set target       = $targetpath:gt;
+		set target       = $target:gr			# trim off extensions
+		set target       = $target:gr
+		set target       = $target:gr
+		set targetswitch = "-T"$targetpath
+					@ n--; breaksw;
+	endsw
+	@ m--
+end
+
+
+if ($n < 2) then
+	echo "Usage:	avgmpr_4dfp <img1> <img2> ... <avgout> [useold] [711-2<B-Z> OR -T<Target including path>]"
+	echo " e.g.,	avgmpr_4dfp va2345_mpr1 va2345_mpr2 va2345_mpr3 va2345_mpr4 va2345_mpr_n4"
+	echo "N.B.:	Each named image must be in 4dfp format and acquired in the same subject."
+	echo "	Mixed orientations are allowed. Any component image filename may include a unix path."
+	echo "N.B.:	"'"useold"'" suppresses unnecessary recomputation of atlas transformation, e.g., <img1>_to_711-2B_t4"
+	echo "N.B.:	If <avgout> = "'"none"'" t4 and lst files will be generated but averaged images will not."
+	exit
+endif
+echo atlas target is $target
+
+set srgv = (${argv[1-]})		# capture image list
+@ k = 1
+while ($k <= ${#srgv})
+	if ($srgv[$k]:e	== "img")	set srgv[$k] = $srgv[$k]:r
+	if ($srgv[$k]:e	== "4dfp")	set srgv[$k] = $srgv[$k]:r
+	@ k++
+end
+set drgv = ($srgv:gh)			# directory list
+set frgv = ($srgv:gt)			# filename  list
+
+if ($debug) then
+	echo ${argv[1-]}
+	echo ${srgv[1-]}
+	echo ${drgv[1-]}
+	echo ${frgv[1-]}
+endif
+
+set out = $frgv[$n]			# last argument is output name
+set log = $out"_avgmpr_4dfp".log
+set lst = $out.lst
+touch				$log
+date >>				$log
+echo avgmpr_4dfp ${argv[1-]} >>	$log
+echo $idstr >>			$log
+
+@ k = 1
+while ($k < $n)
+	echo "looking for "$srgv[$k]
+	     if (-e $frgv[$k].4dfp.img && -e $frgv[$k].4dfp.ifh) then
+	else if (-e $srgv[$k].4dfp.img && -e $srgv[$k].4dfp.ifh) then
+		foreach x ($srgv[$k].4dfp.{img,img.rec,ifh})
+			ln -s $x .
+		end
+	else	echo $frgv[$k] not found
+		exit -1
+	endif
+	@ k++
+end
+
+set t4file = $frgv[1]_to_$target"_t4"
+if ($useold && ! -e $t4file && -e $drgv[1]/$t4file) then
+	cp $drgv[1]/$t4file .
+endif
+if (! -e $t4file) then
+	mpr2atl_4dfp $frgv[1] $targetswitch
+	if ($status) goto ERR;
+	if (! $debug) /bin/rm $frgv[1]_g11*
+endif
+
+switch ($target)
+	case 711-2?:
+		echo Standard target using default call to msktgen_4dfp
+		msktgen_4dfp $frgv[1]
+		if ($status) exit $status
+	breaksw;
+	default:
+		msktgen_4dfp $frgv[1] $targetswitch
+		if ($status) exit $status
+	breaksw
+
+endsw
+if ($status) goto ERR;
+
+echo $frgv[1] >! $lst
+@ i = 2
+while ($i < $n)
+	set t4file = $frgv[$i]_to_$frgv[1]_t4
+	echo t4file=$t4file
+	if ($useold && -e $t4file) goto NEXT
+
+	@ ori = `awk '/orientation/{print $NF - 1}' $frgv[1].4dfp.ifh`
+	t4_inv $bindir/$oristr[$ori]_t4 temp$$_t4
+	if ($status) goto ERR;
+	@ ori = `awk '/orientation/{print $NF - 1}' $frgv[$i].4dfp.ifh`
+	t4_mul $bindir/$oristr[$ori]_t4 temp$$_t4 $t4file
+	if ($status) goto ERR;
+	/bin/rm temp$$_t4
+
+	@ mode = 1024 + 256 + 3
+	imgreg_4dfp $frgv[1] none          $frgv[$i] none $t4file $mode >> $log
+	if ($status) goto ERR;
+	imgreg_4dfp $frgv[1] $frgv[1]_mskt $frgv[$i] none $t4file $mode >> $log
+	if ($status) goto ERR;
+	@ mode = 2048 + 256 + 3
+	imgreg_4dfp $frgv[1] $frgv[1]_mskt $frgv[$i] none $t4file $mode >> $log
+	if ($status) goto ERR;
+	@ mode = 2048 + 256 + 8 + 3
+	imgreg_4dfp $frgv[1] $frgv[1]_mskt $frgv[$i] none $t4file $mode >> $log
+	if ($status) goto ERR;
+	@ mode = 8192 + 2048 + 256 + 8 + 3
+	imgreg_4dfp $frgv[1] $frgv[1]_mskt $frgv[$i] none $t4file $mode >> $log
+	if ($status) goto ERR;
+
+NEXT:
+	echo $frgv[$i]"	"t4=$t4file >> $lst
+ 	@ i++
+end
+if (! $debug) /bin/rm $frgv[1]_mskt*
+
+if (-e $out"_atl".lst) /bin/rm $out"_atl".lst; touch $out"_atl".lst
+@ i = 1
+while ($i < $n)
+	if ($i > 1) t4_mul $frgv[$i]_to_$frgv[1]_t4 $frgv[1]_to_$target"_t4" $frgv[$i]_to_$target"_t4"
+	if ($status) goto ERR;
+	echo $frgv[$i]"	"t4=$frgv[$i]_to_$target"_t4" >> $out"_atl".lst
+ 	@ i++
+end
+
+if ($out != "none") then
+echo	t4imgs_4dfp $out"_atl".lst $out"_111_t88" -O111
+	t4imgs_4dfp $out"_atl".lst $out"_111_t88" -O111
+	if ($status) goto ERR;
+echo	ifh2hdr $out"_111_t88" -r-300to1500
+	ifh2hdr $out"_111_t88" -r-300to1500
+	if ($status) goto ERR;
+
+echo	t4imgs_4dfp $out"_atl".lst $out"_222_t88" -O222
+	t4imgs_4dfp $out"_atl".lst $out"_222_t88" -O222
+	if ($status) goto ERR;
+
+echo	ifh2hdr $out"_222_t88" -r-300to1500
+	ifh2hdr $out"_222_t88" -r-300to1500
+	if ($status) goto ERR;
+
+echo	t4imgs_4dfp $out"_atl".lst $out"_333_t88" -O333
+	t4imgs_4dfp $out"_atl".lst $out"_333_t88" -O333
+	if ($status) goto ERR;
+
+echo	ifh2hdr $out"_333_t88" -r-300to1500
+	ifh2hdr $out"_333_t88" -r-300to1500
+	if ($status) goto ERR;
+endif
+
+
+date >> $log
+exit
+
+ERR:
+if ($debug) then
+	echo $program": execution aborted due to procedural/write error"
+else
+	echo $program": execution aborted due to procedural/write error" >> $log
+endif
+exit -1

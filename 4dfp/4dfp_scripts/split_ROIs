@@ -1,0 +1,144 @@
+#!/bin/csh
+#$Header: /data/petsun4/data1/solaris/csh_scripts/RCS/split_ROIs,v 1.9 2012/01/27 02:15:43 avi Exp $
+#$Log: split_ROIs,v $
+# Revision 1.9  2012/01/27  02:15:43  avi
+# replace option -1 with option -d
+#
+# Revision 1.8  2010/09/06  01:04:17  avi
+# option -1
+#
+# Revision 1.7  2010/04/16  00:30:11  avi
+# no set echo
+#
+# Revision 1.6  2010/04/15  23:29:11  avi
+# auto-compute $istart and $iend
+#
+# Revision 1.5  2009/02/01  02:09:16  avi
+# nawk -> gawk; Usage indicates options must go at end of command line
+#
+# Revision 1.4  2007/09/07  05:51:07  avi
+# better extension stripping (tolerate embedded '.' in $roifile)
+#
+# Revision 1.3  2004/03/03  01:22:19  avi
+# -0 option
+#
+# Revision 1.2  2004/01/15  23:07:57  avi
+# radical revision
+# ROI numbers count form 0 instead of 1
+# option -x (flip x)
+# output not fidl compatible (ROI voxel value = 2.0)
+#
+# Revision 1.1  2002/12/19  00:13:16  avi
+# Initial revision
+#
+
+set idstr = '$Id: split_ROIs,v 1.9 2012/01/27 02:15:43 avi Exp $'
+set program = $0; set program = $program:t;
+set subdir = ./single_ROIs
+echo $idstr
+
+#set echo
+@ flipx = 0
+@ namebynum = 0
+@ delta = 2		# difference between ROI number and voxel value
+######################
+# process command line
+######################
+@ k = 0
+@ i = 1
+while ($i <= ${#argv})
+	set swi = `echo $argv[$i] | awk '$1~/^-/{print substr($1,1,2)}'`
+	if (${#swi} > 0) then
+		set arg = `echo $argv[$i] | awk '{print substr($0,3)}'`
+		switch ($swi)
+			case -x:
+				@ flipx++;		breaksw;
+			case -0:
+				@ namebynum++;		breaksw;
+			case -d:
+				@ delta = $arg;		breaksw;
+			default:
+				echo $swi option not recognized
+				goto USAGE
+				breaksw;
+		endsw
+	else
+		switch ($k)
+			case 0:
+				set roifile	= $argv[$i];	@ k++; breaksw;
+			case 1:
+				@ istart	= $argv[$i];	@ k++; breaksw;
+			case 2:
+				@ iend		= $argv[$i];	@ k++; breaksw;
+		endsw
+	endif
+	@ i++
+end
+if ($k < 1) goto USAGE
+
+set roifile = $1;
+if ($roifile:e == "img")  set roifile = $roifile:r;
+if ($roifile:e == "4dfp") set roifile = $roifile:r;
+if (! -e $roifile.4dfp.img || ! -e $roifile.4dfp.ifh) then
+	echo $roifile not found
+	exit -1
+endif
+@ iendt = `imgmax_4dfp $roifile | awk '{print int($1);}'`;
+@ iendt -= $delta
+if (! ${?istart}) @ istart = 0;
+if ($istart < 0 ) @ istart = 0;
+if (! ${?iend}) @ iend = $iendt
+if ($iend > $iendt) @ iend = $iendt
+
+#######################
+# generate stripped ifh
+#######################
+awk '$0 !~/region names/{print}' $roifile.4dfp.ifh >! temp$$S.4dfp.ifh
+
+if (! -e $subdir) mkdir $subdir
+@ i = $istart
+while ($i <= $iend)
+	set range = `echo $i $delta | awk '{printf("%.1fto%.1f", $1+$2-0.1, $1+$2+0.1)}'`
+	zero_ltgt_4dfp $range $roifile temp$$Z
+	@ nvox = `cluster_4dfp temp$$Z | gawk 'BEGIN{nr=10^6};/^region/{nr=NR};NR>nr{n+=$2};END{printf("%d",n);}'`
+	echo "nvox="$nvox
+	if (! $nvox) goto NEXT;
+##########################################
+# isolate "region names" line of input ifh
+##########################################
+	gawk '($0~/region names/ && $4 == i){$4=0;print}' i=$i $roifile.4dfp.ifh >! temp$$I
+	if ($flipx > 0) then
+		gawk '{if (index($5,"+")==5){sub(/\+/,"-",$5)}else{sub(/-/,"+",$5)};print}' temp$$I >! temp$$I1
+		/bin/mv temp$$I1 temp$$I
+		maskimg_4dfp -v2 temp$$Z temp$$Z temp$$X
+		flip_4dfp -x temp$$X temp$$M
+	else
+		maskimg_4dfp -v2 temp$$Z temp$$Z temp$$M
+	endif
+	if ($namebynum > 0) then
+		set trailer = "roi_"$i
+	else
+		set trailer = `awk '{print $5}' temp$$I`
+	endif
+	/bin/mv temp$$M.4dfp.img	$subdir/$roifile"_"$trailer.4dfp.img
+	/bin/mv temp$$M.4dfp.img.rec	$subdir/$roifile"_"$trailer.4dfp.img.rec
+	cat temp$$S.4dfp.ifh temp$$I >!	$subdir/$roifile"_"$trailer.4dfp.ifh
+	ifh2hdr -r2			$subdir/$roifile"_"$trailer
+NEXT:
+	@ i++
+end
+
+/bin/rm temp$$*
+exit
+
+USAGE:
+echo "Usage:	"$program" <4dfp ROI file> [start_ROI_number] [end_ROI_number] [options]"
+echo "e.g.,	"$program" sum_condition_time_anova_ROI[.4dfp[.img]] 0 82"
+echo "	options"
+echo "	-x	flip ROI to contralateral hemisphere"
+echo "	-0	name output mask file by ROI number (default name as in ifh)"
+echo "	-d<int>	specify difference between ROI number and voxel value (default 2)"
+echo "N.B.:	ROI numbers count from 0 (fidl convention)"
+echo "N.B.:	default starting and ending ROI numbers are 0 and nROI - 1"
+echo "N.B.:	"$program" output files are put into the subdirectory "$subdir
+exit 1

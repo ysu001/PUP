@@ -1,0 +1,38 @@
+#!/bin/csh
+
+#$Header$
+#$Log$
+set rcsid = '$Id$'
+set program = $0; set program = $program:t
+if (${#argv} < 1) goto USAGE
+
+@ debug = 0
+@ k = 0
+@ m = 1
+while ($m <= ${#argv})
+	set swi = `echo $argv[$m] | awk '{print substr($1,1,2)}'`
+	set arg = `echo $argv[$m] | awk '{print substr($0,3)}'`
+	switch ($swi)
+	default:
+		if (! $k) set file = $argv[$m];
+		if ($file:e == "ifh")	set file = $file:r
+		if ($file:e == "img")	set file = $file:r
+		if ($file:e == "4dfp")	set file = $file:r
+		@ k++
+		breaksw;
+	endsw
+	@ m++
+end
+if ($k < 1) goto USAGE
+
+if (! -e $file.4dfp.img || ! -e $file.4dfp.ifh) then
+	echo $program":" $file not found
+	exit -1
+endif
+cluster_4dfp $file | gawk 'BEGIN{nr=10^6};/^region/{nr=NR};NR>nr{n+=$2};END{printf("%d",n);}'
+exit 0
+
+USAGE:
+echo "Usage:	"$program" <(4dfp) ROI>"
+echo " e.g.:	"$program" asd-ctrl_p.lob_roi_+49_+10_-24"
+exit 1

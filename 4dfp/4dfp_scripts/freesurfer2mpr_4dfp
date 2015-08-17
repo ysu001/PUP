@@ -1,0 +1,208 @@
+#!/bin/csh
+#$Header: /data/petsun4/data1/solaris/csh_scripts/RCS/freesurfer2mpr_4dfp,v 1.4 2013/03/10 06:21:28 avi Exp $
+#$Log: freesurfer2mpr_4dfp,v $
+# Revision 1.4  2013/03/10  06:21:28  avi
+# option -skew
+# eliminate requirement that orig and mpr images be in cwd
+#
+# Revision 1.3  2010/11/10  05:57:11  avi
+# eliminate requirement that atlas representative target image exist
+# correct logic around invoking t4img_4dfp
+#
+# Revision 1.2  2010/10/27  04:10:19  avi
+# optioin -a and better usage
+#
+# Revision 1.1  2010/08/11  21:30:40  avi
+# Initial revision
+#
+set idstr = '$Id: freesurfer2mpr_4dfp,v 1.4 2013/03/10 06:21:28 avi Exp $'
+set program = $0; set program = $program:t
+echo $idstr
+if (${#argv} < 1) then
+	echo "Usage:	"$program" <(4dfp) mpr> <(4dfp) orig> [options]"
+	echo "e.g.,	"$program" vc1234_654-3[.4dfp.img] vc1234_orig"
+	echo "e.g.,	"$program" vc1234_654-3 vc1234_orig -T711-2V apply"
+	echo "	options"
+	echo "	-skew		general affine orig->mpr registeration (default 6 parameter rigid body)"
+	echo "	-T<target>	specify atlas representative target"
+	echo "	-a<segimg>	add named (4dfp format) freesurfer segemntation result to" \"apply\" list
+	echo "	apply	proceed directly to transform (4dfp format) segmentations"
+	echo "	force	force atlas transformation of segmentation results even if it already exists"
+	echo "	setecho	set echo"
+	echo "N.B.:	<(4dfp) orig> is the freesurfer-resampled 256x256x256 coronal mpr"
+	echo "N.B.:	the default" \"apply\" "list includes (4dfp format) images named *parc* and *aseg*"
+	exit
+endif
+set oristr	= (T C S)
+set mpr		= $argv[1]; if ($mpr:e  == "img") set mpr  = $mpr:r;   if ($mpr:e  == "4dfp") set mpr  = $mpr:r; 
+set orig	= $argv[2]; if ($orig:e == "img") set orig = $orig}:r; if ($orig:e == "4dfp") set orig = $orig:r;
+
+set target	= ""
+@ rigid		= 1
+@ useT		= 0
+@ apply		= 0
+@ debug		= 0
+@ force		= 0
+set seglst	= ()
+@ m = 3
+while ($m <= ${#argv})
+	switch ($argv[$m])
+	case apply:
+		@ apply++;		breaksw;
+	case setecho:
+		set echo;		breaksw;
+	case debug:
+		@ debug++;		breaksw;
+	case force:
+		@ force++;		breaksw;
+	case -skew:
+		@ rigid = 0;		breaksw;
+	case -a*:
+		set img  = `echo $argv[$m] | awk '{print substr($1,3)}'`
+		if ($img:e == "img")   set img = $img:r	# trim off extensions
+		if ($img:e == "4dfp")  set img = $img:r
+		if (! -e $img.4dfp.img || ! -e $img.4dfp.ifh) then
+			echo $img not found
+			exit -1
+		endif
+		set seglst = ($seglst $img)
+		breaksw;
+	case -T*:
+		set target   = `echo $argv[$m] | awk '{print substr($1,3)}'`
+		if ($target:e == "img")   set target = $target:r	# trim off extensions
+		if ($target:e == "4dfp")  set target = $target:r
+		@ useT++
+		breaksw;
+	endsw
+	@ m++
+end
+
+if ($useT) then
+	set mpratlt4 = $mpr"_to_"${target:t}"_t4"
+	if (! -e $mpratlt4) then
+		echo $mpratlt4 not found
+		exit -1
+	endif
+else
+	set mpratlt4 = (`ls $mpr"_to_711-2"[B-Z]_t4`)
+	if (${#mpratlt4} < 1) then
+		echo $mpr atlas transform not found
+		exit -1
+	endif
+	if (${#mpratlt4} > 1) then
+		echo $program warning" $mpr atlas transform not unique
+		exit -1
+	endif
+	set target = `echo $mpratlt4[1] | awk '{l=index($1,"711-2"); printf("%s",substr($1,l,6));}'`
+endif
+if ($apply) goto APPLY
+
+if (! -e $orig.4dfp.ifh || ! -e $orig.4dfp.img) then
+	echo $program": "$orig not found
+	exit -1
+endif
+if (! -e $mpr.4dfp.ifh || ! -e $mpr.4dfp.img) then
+	echo $program": "$mpr not found
+	exit -1
+endif
+
+set t4file = ${orig:t}"_to_"${mpr:t}"_t4"
+set log =    ${orig:t}"_to_"${mpr:t}.log
+echo $program $argv[1-]	>! $log
+echo $idstr		>> $log
+date			>> $log
+echo "mpr="$mpr		>> $log
+echo "orig="$orig	>> $log
+echo "target="$target	>> $log
+if ($useT) echo "target="$target >> $log
+
+@ ori = `awk '/orientation/{print $NF - 1}' $mpr.4dfp.ifh`
+t4_inv $RELEASE/$oristr[$ori]_t4 $$_t4
+@ ori = `awk '/orientation/{print $NF - 1}' $orig.4dfp.ifh`
+if ($ori != 2) echo $program warning: $orig not coronal
+t4_mul $RELEASE/$oristr[$ori]_t4 $$_t4 $t4file
+/bin/rm $$_t4
+
+if ($rigid) then
+	set modes	= (0 0 0)
+	@ modes[1]	= 1024 + 256 + 3
+	@ modes[2]	= 2048 + 256 + 3
+	@ modes[3]	= $modes[2] + 8192
+else
+	set modes	= (0 0 0 0)
+	@ modes[1]	= 1024 + 256 + 3
+	@ modes[2]	= 1024 + 256 + 3 + 4
+	@ modes[3]	= 2048 + 256 + 3 + 4
+	@ modes[4]	= $modes[3] + 8192
+endif
+
+@ k = 1
+while ($k <= ${#modes})
+echo	imgreg_4dfp $mpr none ${orig} ${orig} $t4file $modes[$k] >> $log
+	imgreg_4dfp $mpr none ${orig} ${orig} $t4file $modes[$k] >> $log
+	if ($status) exit $status
+	@ k++
+end
+@ bad = `tail -1 $log | awk '{if ($2 < 0.98) k++; print k;}'`
+if ($bad) then
+	echo $program": ${orig:t}->${mpr:t} transform failed; try option -skew"
+	exit -1
+endif
+
+sed '/scale:/d'	$t4file >! $$_t4
+/bin/mv $$_t4	$t4file
+t4img_4dfp	$t4file $orig ${orig:t}_on_${mpr:t} -O${mpr}
+if ($status) exit $status
+
+if (${mpr:t} != $mpr && ! -e ${mpr:t}_to_${target:t}_t4) ln -s ${mpr:h}/${mpr:t}_to_${target:t}_t4 .
+t4_mul $t4file ${mpr:t}_to_${target:t}_t4 ${orig:t}_to_${target:t}_t4
+if ($status) exit $status
+
+APPLY:
+set t4file = ${orig:t}_to_${target:t}_t4
+if (! -e $t4file) then
+	echo $t4file not found
+	exit -1
+endif
+
+##################################################
+# test for standard FreeSurfer segmentation images
+##################################################
+ls *parc*4dfp.img *aseg*4dfp.img >& /dev/null
+if ($status) goto SEGLST
+set segs = (`ls *parc*4dfp.img *aseg*4dfp.img`)
+if (${#segs}) then
+	foreach seg ($segs)
+		echo $seg | grep _on_${target:t} > /dev/null
+		if (! $status) continue			# do not transform already transformed images
+		if ($seg:e == "img")   set seg = $seg:r	# trim off extensions
+		if ($seg:e == "4dfp")  set seg = $seg:r
+		foreach O (333 222 111)
+			set out = ${seg}_on_${target:t}_$O
+			if (! $force && -e $out.4dfp.img && -e $out.4dfp.ifh) then
+				echo $out already computed
+				continue
+			endif
+			t4img_4dfp $t4file $seg $out -n -O$O
+			if ($status) exit $status
+		end
+	end
+endif
+
+SEGLST:
+if (${#seglst}) then
+	foreach seg ($seglst)
+		echo $seg | grep _on_${target:t} > /dev/null
+		if (! $status) continue			# do not transform already transformed images
+		foreach O (333 222 111)
+			set out = ${seg}_on_${target:t}_$O
+			if (! $force && -e $out.4dfp.img && -e $out.4dfp.ifh) then
+				echo $out already computed
+				continue
+			endif
+			t4img_4dfp $t4file $seg $out -n -O$O
+			if ($status) exit $status
+		end
+	end	
+endif
+exit 0

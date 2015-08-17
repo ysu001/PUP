@@ -1,0 +1,121 @@
+#!/bin/csh
+#$Header: /data/petsun4/data1/solaris/csh_scripts/RCS/AcenterH,v 1.3 2008/02/14 23:42:19 avi Exp $
+#$Log: AcenterH,v $
+# Revision 1.3  2008/02/14  23:42:19  avi
+# reconfigure for new $refdir (/data/petsun43/data1/atlas) and use 111 (not 222) targets
+#
+# Revision 1.2  2006/07/11  01:26:26  avi
+# make -p option work (required installing more general command line parser)
+#
+# Revision 1.1  2005/10/05  02:59:43  avi
+# Initial revision
+#
+set rcsid	= '$Id: AcenterH,v 1.3 2008/02/14 23:42:19 avi Exp $'
+
+set program	= $0; set program = $program:t
+set bindir	= /data/petsun4/data1/solaris
+set refdir	= /data/petsun43/data1/atlas
+set ref		= $refdir/711-2V_111
+set refmsk	= $refdir/711-2B_mask_g5_111z
+set modes	= (0 0 0 0)
+@ modes[1]	= 4096 + 256 + 3
+@ modes[2]	= 1024 + 256 + 3
+@ modes[3]	= 1024 + 256 + 7
+@ modes[4]	= 3072 + 256 + 7
+set pntfile	= $bindir/centerH.pnt
+
+if (${#argv} < 1) then
+	echo "Usage:	"$program" <dicom_root> [options]"
+	echo " e.g.,	"$program" VB16601.MR.HEAD_RAICHLE.2"
+	echo "option"
+	echo "	-B	target 711-2B (default 711-2A)"
+	echo "	-p<point_file>	specify non-default pnt file (default="$pntfile")"
+	exit
+endif
+
+set date0 = `date`
+@ thresh_mask = 0
+@ to2B = 0
+@ debug = 0
+
+@ k = 0
+@ i = 1
+while ($i <= ${#argv})
+	set swi = `echo $argv[$i] | awk '$1~/^-/{print substr($1,1,2)}'`
+	if ($swi != "") then
+		set arg = `echo $argv[$i] | awk '{print substr($0,3)}'`
+		switch ($swi)
+			case -d:
+				@ debug++;		breaksw;
+			case -B:
+				@ to2B++;		breaksw;
+			case -p:
+				set pntfile = ($arg);	breaksw;
+			default:
+				echo $swi option not recognized
+				exit 1
+				breaksw;
+		endsw
+	else
+		switch ($k)
+			case 0:
+				set dcmroot = $argv[$i];	@ k++; breaksw;
+		endsw
+	endif
+	@ i++
+end
+if ($k < 1) then
+	echo "<dicom root> not specified"
+	exit 1
+endif
+
+echo dcmroot=$dcmroot
+echo to2B=$to2B
+echo pntfile=$pntfile
+
+set cur		= coarse_mprT
+set t4filV	= $cur"_to_711-2V_t4"
+set t4filA	= $cur"_to_711-2A_t4"
+set loclog	= $cur"_loci2trot.log"
+set reglog	= $cur"_"$program.log
+
+dcm_to_4dfp -b coarse_mpr $dcmroot.*
+if ($status) goto ERR
+if ($debug) set echo
+S2T_4dfp coarse_mpr
+gauss_4dfp $cur 1.1
+
+date >!			$reglog
+echo $0 $argv[1-] >>	$reglog
+echo $rcsid >>		$reglog
+@ k = 1
+while ($k <= ${#modes})
+	date >> $reglog
+echo	imgreg_4dfp $ref $refmsk $cur"_g11" none $t4filV $modes[$k]
+	imgreg_4dfp $ref $refmsk $cur"_g11" none $t4filV $modes[$k] >> $reglog
+	if ($status) goto ERR
+	if ($k == ${#modes}) tail -17 $reglog
+	@ k++
+end
+
+if ($to2B) then
+	loci2trot $t4filV $pntfile >! $loclog
+else
+	t4_mul $t4filV $refdir/711-2B_to_711-2A_t4 $t4filA
+	loci2trot $t4filA $pntfile >! $loclog
+endif
+cat $loclog
+
+set fs_args = `cat $loclog | awk '/param6:/{print $2, -$3, -$4, $5, -$6, -$7}'`
+free_slab $fs_args
+
+unset echo
+echo "start time "$date0
+echo "end   time "`date`
+echo "N.B.: Parameters are correct\! Do not flip\!"
+tail -1 $reglog
+
+exit
+
+ERR:
+exit -1

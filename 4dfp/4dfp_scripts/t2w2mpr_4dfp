@@ -1,0 +1,152 @@
+#!/bin/csh
+# $Header: /data/petsun4/data1/solaris/csh_scripts/RCS/t2w2mpr_4dfp,v 1.8 2011/05/09 22:21:50 avi Exp $
+# $Log: t2w2mpr_4dfp,v $
+# Revision 1.8  2011/05/09  22:21:50  avi
+# option nostretch
+#
+# Revision 1.7  2007/06/25  04:15:57  avi
+# option -T
+#
+# Revision 1.6  2003/03/20  22:51:11  avi
+# correct missing $mpr error message
+#
+# Revision 1.5  2003/03/19  22:49:58  avi
+# generalize atlas target to 711-2[B-Z]
+#
+# Revision 1.4  2003/02/07  02:34:14  avi
+# add -O333 output
+#
+# Revision 1.3  2002/10/12  00:04:52  avi
+# create 111 and 222 atlas space $t2w images
+#
+# Revision 1.2  2002/10/10  21:25:35  avi
+# start registration with two "find" mode calls to imgreg_4dfp
+#
+# Revision 1.1  2002/10/10  03:28:40  avi
+# Initial revision
+#
+set idstr = '$Id: t2w2mpr_4dfp,v 1.8 2011/05/09 22:21:50 avi Exp $'
+echo $idstr
+
+set program = $0; set program = $program:t
+@ nostretch = 0
+if (${#argv} < 2) then
+	echo "Usage:	"$program" <4dfp mprage> <4dfp t2w> [options]"
+	echo "e.g.:	"$program" vc6383_130-4 vc6383_130-5"
+	echo "	options"
+	echo "	-T<target>	specify atlas target (<target> may include absolute path)"
+	echo "	nostretch	disable stretch"
+	echo "	setecho		set echo"
+	echo "	debug		debug mode "
+	echo "N.B.:	"$program" assumes that <4dfp mprage> is in the current working directory"
+	echo "	and that its atlas transform, e.g., vc6383_130-4_to_711-2V_t4"
+	echo "	exists and is in the current working directory"
+	exit 1
+endif
+
+if ($?RELEASE) then
+	set bindir = $RELEASE
+else
+	set bindir = /data/petsun4/data1/solaris
+endif
+set oristr =	(T C S)
+set mpr =	$argv[1]; set mpr = $mpr:r; set mpr = $mpr:r; 
+set t2w =	$argv[2]; set t2w = $t2w:r; set t2w = $t2w:r;
+
+set targetpath	= ""
+@ useT = 0
+@ debug = 0
+@ m = 3
+while ($m <= ${#argv})
+	switch ($argv[$m])
+	case setecho:
+		set echo;		breaksw;
+	case debug:
+		@ debug++;		breaksw;
+	case nostretch:
+		@ nostretch++;		breaksw;
+	case -T*:
+		set targetpath   = `echo $argv[$m] | awk '{print substr($1,3)}'`
+		set targetpath   = $targetpath:r	# trim off extensions
+		set targetpath   = $targetpath:r
+		set target       = $targetpath:t
+		@ useT++
+		breaksw;
+
+	endsw
+	@ m++
+end
+
+if (! -e $t2w.4dfp.ifh || ! -e $t2w.4dfp.img) then
+	echo $program": "$t2w not found
+	exit -1
+endif
+if (! -e $mpr.4dfp.ifh || ! -e $mpr.4dfp.img) then
+	echo $program": "$mpr not found
+	exit -1
+endif
+if ($useT) then
+	set mpratlt4 = $mpr"_to_"$target"_t4"
+	if (! -e $mpratlt4) then
+		echo $mpratlt4 not found
+		exit -1
+	endif
+else
+	set mpratlt4 = ($mpr"_to_711-2"[B-Z]_t4)
+	if (${#mpratlt4} < 1) then
+		echo $mpr atlas transform not found
+		exit -1
+	endif
+	set target = `echo $mpratlt4[1] | awk '{l=index($1,"711-2"); printf("%s",substr($1,l,6));}'`
+endif
+
+set t4file = $t2w"_to_"$mpr"_t4"
+set log =    $t2w"_to_"$mpr.log
+echo $program $argv[1-]	>! $log
+echo $idstr		>> $log
+date			>> $log
+echo "mpr="$mpr		>> $log
+echo "t2w="$t2w		>> $log
+echo "target="$target	>> $log
+if ($useT) echo "targetpath="$targetpath >> $log
+
+set useTstr = ""
+if ($useT) set useTstr = "-T"$targetpath
+msktgen_4dfp $mpr $useTstr
+
+@ ori = `awk '/orientation/{print $NF - 1}' $mpr.4dfp.ifh`
+t4_inv $bindir/$oristr[$ori]_t4 temp$$_t4
+@ ori = `awk '/orientation/{print $NF - 1}' $t2w.4dfp.ifh`
+t4_mul $bindir/$oristr[$ori]_t4 temp$$_t4 $t4file
+/bin/rm temp$$_t4
+
+set modes = (0 0 0 0 0)
+@ modes[1] = 4096 + 3
+@ modes[2] = 4096 + 3
+@ modes[3] = 1024 + 3
+@ modes[4] = 2048 + 3 + 8
+@ modes[5] = 2048 + 3 + 8 + 8192
+if ($nostretch) then
+	@ modes[4] = 2048 + 3
+	@ modes[5] = 2048 + 3 + 8192
+endif
+set mskstr = ("none" "none" $mpr"_mskt" $mpr"_mskt" $mpr"_mskt")
+@ k = 1
+while ($k <= ${#modes})
+	echo	imgreg_4dfp  $mpr $mskstr[$k] $t2w none $t4file $modes[$k] >> $log
+		imgreg_4dfp  $mpr $mskstr[$k] $t2w none $t4file $modes[$k] >> $log
+	if ($status) exit $status
+	@ k++
+end
+
+t4_mul $t4file $mpratlt4[1] $t2w"_to_"$target"_t4"
+
+t4img_4dfp $t2w"_to_"$target"_t4" $t2w	$t2w"_t88_111" -O111
+ifh2hdr					$t2w"_t88_111" -r2000
+t4img_4dfp $t2w"_to_"$target"_t4" $t2w	$t2w"_t88_222" -O222
+ifh2hdr					$t2w"_t88_222" -r2000
+t4img_4dfp $t2w"_to_"$target"_t4" $t2w	$t2w"_t88_333" -O333
+ifh2hdr					$t2w"_t88_333" -r2000
+
+if (! $debug) /bin/rm $mpr"_mskt".4dfp*
+exit

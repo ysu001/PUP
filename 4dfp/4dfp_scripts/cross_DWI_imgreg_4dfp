@@ -1,0 +1,105 @@
+#!/bin/csh
+#$Header: /data/petsun4/data1/solaris/csh_scripts/RCS/cross_DWI_imgreg_4dfp,v 1.4 2009/09/14 04:00:22 avi Exp $
+#$Log: cross_DWI_imgreg_4dfp,v $
+# Revision 1.4  2009/09/14  04:00:22  avi
+# variable names more closely related to generic_DWI_script_090219
+#
+# Revision 1.3  2007/09/07  00:47:09  avi
+# trap imgreg_4dfp failure
+#
+# Revision 1.2  2007/09/04  02:10:07  avi
+# atlas target now required 4th argument; generalized atlas target compliant
+#
+# Revision 1.1  2007/02/07  05:42:58  avi
+# Initial revision
+#
+set rcsid = '$Id: cross_DWI_imgreg_4dfp,v 1.4 2009/09/14 04:00:22 avi Exp $'
+echo $rcsid
+set program = $0; set program = $program:t
+if (${#argv} < 3) then
+	echo "Usage:	"$program" <curr_dwi> <day1_dwi_path> <day1_dwi> <atlas_representative_target> [options]"
+	echo " e.g.:	"$program" 6770_dwi /data/petsun24/data1/5575 5575_dwi [abspath/]711-2Y"
+	echo "N.B.:	"$program" must be run in the current DWI directory"
+	exit 1
+endif
+
+set day2	= $1; if ($day2:e == "img") set day2 = $day2:r; if ($day2:e == "4dfp") set day2 = $day2:r;
+set day1_dwi_path	= $2
+set day1	= $3; if ($day1:e == "img") set day1 = $day1:r; if ($day1:e == "4dfp") set day1 = $day1:r;
+set target	= $4;
+set log		= $day2"_to_"$day1.log
+set t4file	= $day2"_to_"$day1"_t4"
+set modes	= (1 2 3 4 5 6)
+@ modes[1]	= 4096 + 3 + 256
+@ modes[2]	= 4096 + 3 + 256
+@ modes[3]	= 3072 + 3 + 256
+@ modes[4]	= 2048 + 3 + 256
+@ modes[5]	= $modes[4] + 4
+@ modes[6]	= $modes[5] + 8192
+echo "atlas representative target="$target
+
+@ debug	= 0
+set atlas	= 711-2B	# default atlas space
+@ m  = 5
+while ($m <= ${#argv})
+	switch ($argv[$m])
+	case -S*:
+		set atlas	= `echo $argv[$m] | awk '{print substr($1,3)}'`
+		breaksw;
+	case setecho:
+		set echo;		breaksw;
+	case debug:
+		@ debug++;		breaksw;
+		breaksw;
+	endsw
+	@ m++
+end
+
+##############################
+# make day1 data tailored mask
+##############################
+pushd $day1_dwi_path			# into $day1_dwi_path
+msktgen_4dfp $day1 100 -T$target -S$atlas
+if ($status) exit $status
+endif
+popd					# out of $day1_dwi_path
+
+####################
+# initialize $t4file
+####################
+set oristr	= (T C S)
+@ ori = `awk '/orientation/{print $NF - 1}' $day1_dwi_path/$day1.4dfp.ifh`
+t4_inv $RELEASE/$oristr[$ori]_t4 temp$$_t4
+@ ori = `awk '/orientation/{print $NF - 1}' $day2.4dfp.ifh`
+t4_mul $RELEASE/$oristr[$ori]_t4 temp$$_t4 $t4file
+/bin/rm temp$$_t4
+
+#####################################
+# compute cross-day dwi to dwi t4file
+#####################################
+echo $program $argv[1-]	>! $log
+date			>> $log
+echo $rcsid		>> $log
+@ k = 1
+while ($k <= ${#modes})
+echo	imgreg_4dfp $day1_dwi_path/$day1 $day1_dwi_path/$day1"_mskt" $day2 none $t4file $modes[$k] >> $log
+	imgreg_4dfp $day1_dwi_path/$day1 $day1_dwi_path/$day1"_mskt" $day2 none $t4file $modes[$k] >> $log
+	if ($status) exit $status
+	@ k++
+end
+
+####################
+# compose transforms
+####################
+set cur	= `date +"%m%d%y_%H%M"`
+if (-e $day2"_to_"${target:t}"_t4") /bin/mv			$day2"_to_"${target:t}"_t4" $day2"_to_"${target:t}"_t4_"$cur
+t4_mul $t4file $day1_dwi_path/$day1"_to_"${target:t}"_t4"	$day2"_to_"${target:t}"_t4"
+
+#####################
+# apply new transform
+#####################
+t4img_4dfp $t4file $day2	$day2"_on_"$day1 -O$day1_dwi_path/$day1
+if ($status) exit $status
+ifh2hdr -r1000			$day2"_on_"$day1
+
+exit

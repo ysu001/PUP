@@ -1,0 +1,24 @@
+#!/bin/csh
+# 2003 Jan 23 AZS & dhead
+# $Header: /data/petsun4/data1/solaris/csh_scripts/RCS/t4_stretch_prod,v 1.1 2003/08/28 21:15:39 avi Exp $
+# $Log: t4_stretch_prod,v $
+# Revision 1.1  2003/08/28  21:15:39  avi
+# Initial revision
+#
+echo '$Id: t4_stretch_prod,v 1.1 2003/08/28 21:15:39 avi Exp $'
+
+set program = $0; set program = $program:t
+
+if (${#argv} < 1) then
+	echo Usage: $program "<t4_file>"
+	exit 1
+endif
+if (! -e $1) then
+	echo $1 not found
+	exit -1
+endif
+
+t4_factor $1 | awk '/stretch \(factor\)/{printf("direct     product %10.6f\n", $NF*$(NF-1)*$(NF-2))}'
+t4_factor $1 | awk '/stretch \(factor\)/{printf("reciprocal product %10.6f\n", 1/($NF*$(NF-1)*$(NF-2)))}'
+
+exit

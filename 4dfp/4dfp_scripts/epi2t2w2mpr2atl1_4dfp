@@ -1,0 +1,223 @@
+#!/bin/csh
+# $Header: /data/petsun4/data1/solaris/csh_scripts/RCS/epi2t2w2mpr2atl1_4dfp,v 1.10 2009/06/11 23:04:32 avi Exp $
+# $Log: epi2t2w2mpr2atl1_4dfp,v $
+# Revision 1.10  2009/06/11  23:04:32  avi
+# correct bugs mostly related to input images in other directories
+#
+# Revision 1.9  2009/04/15  01:11:27  avi
+# make filename parser robust to embedded '.'s
+#
+# Revision 1.8  2007/11/16  20:03:54  mohanar
+# Fixed additional call to :h while evaluating mprdir, epidir and t2wdir
+#
+# Revision 1.7  2007/09/26  02:15:24  avi
+# usage
+#
+# Revision 1.6  2007/09/25  17:20:15  mohanar
+# Added -T and -S flags
+#
+# Revision 1.5  2007/03/15  00:59:22  avi
+# eliminate superfluous "$bindir/"s
+# better trapping of errors in call to mpr2atl_4dfp
+#
+# Revision 1.4  2005/08/12  23:08:09  avi
+# generalize $target computation
+#
+# Revision 1.3  2005/06/12  03:30:28  avi
+# add targets 711-2G and 711-2H
+#
+# Revision 1.2  2002/06/25  00:28:25  avi
+# add targets 711-2[KL]
+#
+# Revision 1.1  2001/05/15  02:36:19  avi
+# Initial revision
+#
+set idstr = '$Id: epi2t2w2mpr2atl1_4dfp,v 1.10 2009/06/11 23:04:32 avi Exp $'
+set program = $0; set program = $program:t;
+
+echo $idstr
+if (${#argv} < 3) then
+	echo "Usage:	"$program "<epi_anat> <t2w_anat> <mpr_anat> [useold] [711-2? OR -T<Target including path>] [-S<atlas space>]"
+	echo "e.g.,	"$program "stem9_anat_ave stem9_643-2 stem9_654-3 711-2B"
+	echo "e.g.,	"$program "stem9_anat_ave stem9_654-3 useold -T/data/cninds01/atlas/NP765 -S711-2B"
+	echo "N.B.:	Any image argument may include a path, e.g., /data/petmr1/data7/stem/96_06_14_stem9/stem9_654-3"
+	echo "N.B.:	All named images must be in 4dfp format"
+	echo "N.B.:	-S specifies the atlas space. The only currently supported atlas space is 711-2B"
+	exit 1
+endif
+
+set atlas = "711-2B"
+set hasStudyTarget = 0
+set hasAtlas = 0
+
+set date0 = `date`
+set usr = `whoami`
+
+@ useold = 0
+@ debug = 0
+
+set wrkdir =	$cwd
+if (! $?RELEASE) then
+	set bindir = /data/petsun4/data1/solaris
+else
+	set bindir = $RELEASE
+endif
+
+set oristr =	(T C S)
+
+set xxx = ($1 $2 $3)
+@ k = 1
+while ($k <= 3)
+	if ($xxx[$k]:e == "img")	set xxx[$k] = $xxx[$k]:r
+	if ($xxx[$k]:e == "4dfp")	set xxx[$k] = $xxx[$k]:r
+	     if (-e $xxx[$k]:t.4dfp.img && -e $xxx[$k]:t.4dfp.ifh) then
+	else if (-e $xxx[$k].4dfp.img && -e $xxx[$k].4dfp.ifh) then
+		foreach e (img img.rec ifh)
+			ln -s $xxx[$k].4dfp.$e .
+		end
+	else	echo $xxx[$k] not found
+		exit -1
+	endif
+	@ k++
+end
+set epi		= $xxx[1]:t
+set epidir	= $xxx[1]:h
+if ($epi == $epidir) set epidir = $cwd
+set t2w		= $xxx[2]:t
+set t2wdir	= $xxx[2]:h
+if ($t2w == $t2wdir) set t2wdir = $cwd
+set mpr		= $xxx[3]:t
+set mprdir	= $xxx[3]:h
+if ($mpr == $mprdir) set mprdir = $cwd
+
+set target		= "711-2B"
+set targetswitch	= "711-2B"
+set atlasswitch		= ""
+foreach x (${argv[3-]})
+	if ($x == "debug")	@ debug++
+	if ($x == "useold")	@ useold++		# use existing t4files if present
+	switch ($x)
+			case 711-2?:
+				set target       = $x;
+				set targetswitch = "-T"$target
+				set atlasswitch = ""
+				breaksw;
+			case -T*:
+				set targetpath   = `echo $x | awk '{print substr($1,3)}'`;
+				set target       = $targetpath:gt;
+				set target       = $target:gr			# trim off extensions
+				set target       = $target:gr
+				set target       = $target:gr
+				set targetswitch = "-T"$targetpath
+				set hasStudyTarget = 1;
+				breaksw;
+			case -S*:
+				set atlas   = `echo $x | awk '{print substr($1,3)}'`;
+				set hasAtlas = 1;
+				set atlasswitch = "-S"$atlas
+				breaksw;
+	endsw
+end
+
+if ($hasStudyTarget == 1) then
+	if ($hasAtlas == 0) then
+		echo -S option not used. Using default atlas space $atlas
+	else
+		if ($atlas != "711-2B") then
+			echo Unsupported atlas space $atlas
+			exit -1;
+		endif
+	endif
+endif
+echo "atlas representative target = "$target  "atlas space = "$atlas
+
+set log = $mpr"_"$program.log
+date >!				$log
+echo $0 $argv[1-] >>		$log
+echo $idstr >>			$log
+echo epi = $epidir/$epi >>	$log
+echo t2w = $t2wdir/$t2w >>	$log
+echo mpr = $mprdir/$mpr >>	$log
+echo "target="$target >>	$log
+echo "atlas="$atlas >>		$log
+tail -50 $log
+
+set t4file = $mpr"_to_"$target"_t4"
+if ($useold && ! -e $t4file && -e $mprdir/$t4file) cp $mprdir/$t4file .
+if (! $useold || ! -e $t4file) then
+	echo computing $t4file
+	echo	mpr2atl_4dfp $mpr $targetswitch $atlasswitch
+		mpr2atl_4dfp $mpr $targetswitch $atlasswitch
+	if ($status) exit $status
+endif
+
+set t4file = $t2w"_to_"$mpr"_t4"
+if ($useold && -e $t2wdir/$t4file) /bin/cp $t2wdir/$t4file .
+if (! $useold || ! -e $t4file) then
+	if (! $debug || ! -e $mpr"_mskt".4dfp.img || ! -e $mpr"_mskt".4dfp.ifh) then
+		switch ($target)
+			case 711-2?:
+				echo default call to msktgen_4dfp using standard target
+				msktgen_4dfp $mpr $targetswitch
+				breaksw;
+			default:
+				msktgen_4dfp $mpr $targetswitch $atlasswitch
+				breaksw;
+		endsw
+		if ($status < 0) exit $status
+	endif
+
+	@ ori = `awk '/orientation/{print $NF - 1}' $mpr.4dfp.ifh`
+	t4_inv $bindir/$oristr[$ori]_t4 temp$$_t4
+	@ ori = `awk '/orientation/{print $NF - 1}' $t2w.4dfp.ifh`
+	t4_mul $bindir/$oristr[$ori]_t4 temp$$_t4 $t4file
+
+	@ mode = 1024 + 3
+	imgreg_4dfp $mpr none        $t2w none $t4file $mode >> $log
+	@ mode = 1024 + 3
+	imgreg_4dfp $mpr $mpr"_mskt" $t2w none $t4file $mode >> $log
+	@ mode = 1024 + 3 + 8 + 64		# t2w in-plane voxel size adjust
+	imgreg_4dfp $mpr $mpr"_mskt" $t2w none $t4file $mode >> $log
+	@ mode = 8192 + 2048 + 3 + 8
+	imgreg_4dfp $mpr $mpr"_mskt" $t2w none $t4file $mode >> $log
+	if ($status < 0) exit $status
+	if (! $debug) /bin/rm $mpr"_mskt"* $mpr"_g"*
+endif
+
+if (! -e $epi"_msk".4dfp.img || -e $epi"_msk".4dfp.ifh) then
+	echo computing $epi"_msk"
+	gauss_4dfp $epi 0.3 msk$$
+	set epimax = `imgmax_4dfp msk$$`
+	set thresh = `echo $epimax | awk '{print 0.2*$1}'`
+	img2msk_4dfp $epi temp$$
+	maskimg_4dfp temp$$ msk$$ -t$thresh $epi"_msk"
+	/bin/rm msk$$* temp$$*
+endif
+
+set t4file = $epi"_to_"$t2w"_t4"
+if ($useold && ! -e $t4file && -e $epidir/$t4file) cp $epidir/$t4file .
+if (! $useold || ! -e $t4file) then
+	@ ori = `awk '/orientation/{print $NF - 1}' $t2w.4dfp.ifh`
+	t4_inv $bindir/$oristr[$ori]_t4 temp$$_t4
+	@ ori = `awk '/orientation/{print $NF - 1}' $epi.4dfp.ifh`
+	t4_mul $bindir/$oristr[$ori]_t4 temp$$_t4 $t4file
+
+	@ mode = 1024 + 3
+	imgreg_4dfp $t2w none $epi none       $t4file $mode >> $log
+	@ mode = 1024 + 3
+	imgreg_4dfp $t2w none $epi $epi"_msk" $t4file $mode >> $log
+	@ mode = 3072 + 3 + 8		# epi in-plane voxel size adjust
+	imgreg_4dfp $t2w none $epi $epi"_msk" $t4file $mode >> $log
+	@ mode = 8192 + 2048 + 3 + 8
+	imgreg_4dfp $t2w none $epi $epi"_msk" $t4file $mode >> $log
+	if ($status < 0) exit $status
+	if (! $debug) /bin/rm $epi"_msk"* temp$$*
+endif
+
+t4_mul $t2w"_to_"$mpr"_t4" $mpr"_to_"$target"_t4"	$t2w"_to_"$target"_t4"
+t4_mul $epi"_to_"$t2w"_t4" $t2w"_to_"$target"_t4"	$epi"_to_"$target"_t4"
+t4_mul $epi"_to_"$t2w"_t4" $t2w"_to_"$mpr"_t4"		$epi"_to_"$mpr"_t4"
+
+echo "start time "$date0
+echo "end   time "`date`
+exit
