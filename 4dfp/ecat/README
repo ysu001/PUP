@@ -1,0 +1,22 @@
+=======
+libecat
+=======
+
+libecat7-1.5 was included here for the convenience of PUP user. Please see the
+included license file for more details about the copyright information.
+
+===================
+Building ecat tools
+===================
+
+The ecat folder should be put in parallel to other 4dfp source directory so
+that the ecat tools can be built properly.
+
+Unpack libecat7-1.5 and build this tool following the included instructions.
+Only the first two steps for building libecat tool are needed, i.e. configure
+and make. The last two steps, make install and ldconfig, were not required for
+building the ecat tools needed for PUP.
+
+Build the ecatto4dfp and ecat_header excecutable using the included makefile.
+
+
