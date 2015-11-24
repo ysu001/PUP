@@ -8,7 +8,6 @@ CSRCS	= ${PROG}.c
 TRX	= ../TRX
 ECAT	= libecat7-1.5/src
 ECATUTIL	= libecat7-1.5/utils
-RPC	= /usr/include/tirpc
 LOBJS	= ${ECAT}/analyze.o ${ECAT}/convert_64.o ${ECAT}/convert_70.o ${ECAT}/crash.o \
 	  ${ECAT}/interfile.o ${ECAT}/load_volume7.o ${ECAT}/machine_indep.o \
 	  ${ECAT}/matrix.o ${ECAT}/matrix_64.o ${ECAT}/matrix_extra.o \
@@ -21,10 +20,10 @@ OBJS	= ${CSRCS:.c=.o}
 .c.o:
 	${CC} -c $<
 
-CFLAGS	= -O -I. -I${ECAT} -I${ECATUTIL} -I${TRX} -I${RPC}
+CFLAGS	= -O -I. -I${ECAT} -I${ECATUTIL} -I${TRX}
 ifeq (${OSTYPE}, linux)
 	CC	= gcc ${CFLAGS}
-	LIBS	= -lm -lc -ltirpc
+	LIBS	= -lm
 else
 	CC	= cc ${CFLAGS}
 	LIBS	= -lm -lrpcsvc -lnsl

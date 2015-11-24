@@ -9,7 +9,6 @@
 PROG	= ecat_header
 CSRCS	= ${PROG}.c
 ECAT	= libecat7-1.5/src
-RPC	= /usr/include/tirpc
 LOBJS	= ${ECAT}/analyze.o ${ECAT}/convert_64.o ${ECAT}/convert_70.o ${ECAT}/crash.o \
 	  ${ECAT}/interfile.o ${ECAT}/load_volume7.o ${ECAT}/machine_indep.o \
 	  ${ECAT}/matrix.o ${ECAT}/matrix_64.o ${ECAT}/matrix_extra.o \
@@ -25,7 +24,7 @@ OBJS	= ${CSRCS:.c=.o}
 CFLAGS	= -I. -I${ECAT} -O
 ifeq (${OSTYPE}, linux)
 	CC	= gcc ${CFLAGS}
-	LIBS	= -lm -ltirpc
+	LIBS	= -lm
 else
 	CC	= cc ${CFLAGS}
 	LIBS	= -lm -lrpcsvc -lnsl
