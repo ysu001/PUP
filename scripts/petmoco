@@ -23,7 +23,7 @@
 # t4 files for each time bin.						       #
 ################################################################################
 # Yi Su, 11/05/2013
-VERSION=1.0
+VERSION=1.1
 
 if [ "$1" == "--version" ]; then
     echo $VERSION
@@ -36,7 +36,7 @@ die(){
 }
 
 program=`basename $0`
-idstr='$Id: '$program',v '$VERSION' 2013/11/05 18:07:48 suy Exp $'
+idstr='$Id: '$program',v '$VERSION' 2015/11/20 15:07:48 suy Exp $'
 echo $idstr
 
 if [ $# -lt 1 ]
@@ -143,15 +143,22 @@ fi
 # Register each time bin to the sumall and generate combined FOV coverage
 for (( i=1; i<=ntb; i++ ))
 do
-	reg2img ${petid}_sumall ${petid}_tb${i} -rm -mm -rb 6 -mb 6 -f || die "$program ERROR: reg2img ${petid}_sumall ${petid}_tb${i} -rm -mm -rb 6 -mb 6 -f failed"
+	reg2img ${petid}_sumall ${petid}_tb${i} -rm -mm -rb 6 -mb 6 -f
 	t4fn=${petid}_tb${i}_to_${petid}_sumall_t4
-	err=`gawk '/ERROR =/{print $3}' ${petid}_sumall_${petid}_tb${i}_reg2img_resolve.log`
-	if (( $err > $tolmoco ))
+	if [ -e ${petid}_sumall_${petid}_tb${i}_reg2img_resolve.log ]
 	then
+		err=`gawk '/ERROR =/{print $3}' ${petid}_sumall_${petid}_tb${i}_reg2img_resolve.log`
+		if (( $err > $tolmoco ))
+		then
+			echo "WARNING: MOCO Failure for Time Bin $i"
+			echo "Setting the t4 to identity matrix"
+			cp ${RELEASE}/T_t4 ${t4fn}
+		fi
+	else
 		echo "WARNING: MOCO Failure for Time Bin $i"
 		echo "Setting the t4 to identity matrix"
 		cp ${RELEASE}/T_t4 ${t4fn}
-	fi
+	fi	
 	echo ${t4fn} >> ${petid}.moco
 	t4img_4dfp ${t4fn} temp$$"_msk" temp$$"_1" -O${petid}_sumall || die "$program ERROR: t4img_4dfp failed"
 	imgopr_4dfp -ptemp$$"_2" temp$$"_1" petfov || die "$program ERROR: imgopr_4dfp failed"
