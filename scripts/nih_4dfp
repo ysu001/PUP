@@ -1,0 +1,88 @@
+#!/bin/bash
+################################################################################
+# Script to convert NIH nifti format PET data into 4dfp format                 #
+#                                                                              #
+# USAGE:								       #
+#	nih_4dfp infile outroot                                                #
+#                                                                              #
+################################################################################
+# Yi Su, 07/18/2016
+VERSION=1.0
+if [ "$1" == "--version" ]; then
+    echo $VERSION
+    exit 0
+fi
+
+die(){
+    echo >&2 "$@"
+    exit -1
+}
+
+program=`basename $0`
+idstr='$Id: '$program',v '$VERSION' Mon Jul 18 09:25:55 CDT 2016 suy $'
+echo $idstr
+
+if [ $# -lt 3 ]
+then
+	echo "Usage: $program infile outroot halflife"
+	exit -1
+fi
+
+infile=$1
+outroot=$2
+halflife=$3
+echo $program $infile $outroot $halflife
+
+
+indir=`dirname $infile`
+inname=`basename $infile`
+extension=${inname##*.}
+inname=${inname%.*}
+
+cp ${indir}/${inname}.* .
+
+# the input file could be either the nii version or the .img/hdr (Analyze version)
+if [ "$extension" == "img" ]
+then
+        $FREESURFER_HOME/bin/mri_convert ${inname}.img ${inname}.nii || die "$program ERROR: mri_convert failed"
+	nifti_4dfp -4 -N ${inname}.nii $outroot || die "$program ERROR: nifti_4dfp failed"
+elif [ "$extension" == "nii" ]
+then
+	nifti_4dfp -4 -N ${inname}.nii $outroot || die "$program ERROR: nifti_4dfp failed"
+fi
+
+# read frame timing information (from the ${inname}.csv and update the rec file)
+if [ -e ${inname}.csv ]
+then
+	nfcsv=`wc -l ${inname}.csv | gawk '{print $1}'`
+else
+	echo "Missing CSV file for PET frame timing"
+	exit -1
+fi
+nf4dfp=`gawk -F= '/matrix size/ && /\[4\]/ {print $2}' ${outroot}.4dfp.ifh`
+(( nfcsv=nfcsv-1 ))
+if [ "$nfcsv" -ne "$nf4dfp" ]
+then
+	echo "frame timing mismatch"
+	exit -2
+fi
+sed -i '/endrec/ d' ${outroot}.4dfp.img.rec
+
+lamda=$(echo "scale=10; 0.693147/$halflife" | bc)
+printf 'Frame     \tLength(msec)\tMidpoint(sec)\tStart(msec)\t Frame_Min\t Frame_Max\t Decay_Fac\tRescale\n'  >>  ${outroot}.4dfp.img.rec
+for (( f=1; f<=nf4dfp; f++ ))
+do
+	chop_4dfp -oframe ${outroot} $f $f  
+	read imax imin <<< `imgmax_4dfp -m frame`
+	(( l=f+1 ))
+	IFS="," read dummy frd te <<< "`gawk 'NR=='$l ${inname}.csv`"
+	echo $frd $te
+	frd1=$(echo "scale=6; $frd*60000" | bc)  
+	st1=$(echo "scale=6; $te*60000-$frd*60000" | bc)
+	t=$(echo "scale=6; $te*60-$frd*30" | bc)
+	dcf=$(echo "$frd*60*$lamda/(1-e(-$lamda*$frd*60))/e(-$lamda*$st1/1000)" | bc -l)
+	printf 'Frame_%d \t%10.0f \t%10.2f \t%10.0f \t%10.2f \t%10.2f \t%10.6f \t%10s\n' $f $frd1 $t $st1 $imin $imax $dcf 1 >> ${outroot}.4dfp.img.rec
+done
+rm frame.4dfp.*
+
+echo endrec `date` `whoami` >>  ${outroot}.4dfp.img.rec

@@ -15,14 +15,15 @@
 #	format: original format of pet data                                    #
 #		format = 0 (DICOM) 					       #
 #		format = 1 (ecat)					       #
-#		format = 2 (Siemens InterFile)				       #
+#		format = 2 (Siemens InterFile)                                 #
+#	        format = 5 (nih nifti format)				       #
 #	filterxy: fwhm of in-plane filtering				       #
 #	filterz:  fwhm of axial filtering				       #
 #                                                                              #
 # The output of this program would be a 4dfp quadruplet and a .info file that  #
 # contains the frame timing and decay correction info.                         #
 ################################################################################
-# Yi Su, 11/05/2013
+# Yi Su, 07/19/2016
 VERSION=1.0
 
 if [ "$1" == "--version" ]; then
@@ -63,6 +64,9 @@ then
 elif (( $format == 2 ))
 then
 	sif_4dfp $petdir/$petfn $petid || die "$program ERROR: sif_4dfp $petdir/$petfn $petid failed"
+elif (( $format == 5 ))
+then
+	nih_4dfp $petdir/$petfn $petid $half_life || die "$program ERROR: nih_4dfp $petdir/$petfn $petid $halflife failed"
 fi
 
 # Generate .info file

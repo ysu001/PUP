@@ -7,8 +7,8 @@
 #                                                                              #
 # This script reads a params file for PET processing                           #
 ################################################################################
-# Yi Su, 01/08/2014
-VERSION=1.0
+# Yi Su, 07/18/2016
+VERSION=1.02
 if [ "$1" == "--version" ]; then
     echo $VERSION
     exit 0
@@ -20,7 +20,7 @@ die(){
 }
 
 program=`basename $0`
-idstr='$Id: '$program',v '$VERSION' Fri Jan 31 09:41:55 CST 2014 suy $'
+idstr='$Id: '$program',v '$VERSION' Mon Jul 18 09:25:55 CDT 2016 suy $'
 echo $idstr
 
 if [ $# -lt 1 ]
