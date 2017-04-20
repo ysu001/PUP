@@ -8,9 +8,9 @@
 # $1: 4dfp PET file name (*.4dfp.img) assuming the frame duration and decay correction info is in the .rec file
 #
 ###################--------------------------------------------------------------
-# Yi Su, 07/18/2016
+# Yi Su, 04/20/2017
 
-idstr='$Id: PETinfo,v 1.2 Mon Jul 18 13:17:44 CDT 2016 suy Exp $'
+idstr='$Id: PETinfo,v 1.3 Thu Apr 20 15:50:13 CDT 2017 suy Exp $'
 echo $idstr
 
                                                             
@@ -52,11 +52,12 @@ then
 	st0=$(echo "scale=8; $t-$fd/2" | bc)
 fi
 
-
 for (( f=1; f<=$frames; f++ ))
 do
 	fd=`gawk '/Frame_'$f' / {print $2/1000}' $petdir"/"$petroot".4dfp.img.rec"`
 	dc=`gawk '/Frame_'$f' / {print $7}' $petdir"/"$petroot".4dfp.img.rec"`
+	echo $fd $dc
+
 	if (( $format == 1 ))
 	then
 		st=`gawk '/Frame_'$f' / {print $4/1000}' $petdir"/"$petroot".4dfp.img.rec"`
@@ -74,8 +75,9 @@ do
 		t=`gawk '/Frame_'$f' / {print $3}' $petdir"/"$petroot".4dfp.img.rec"`
 		st=$(echo "scale=8; $t-$fd/2" | bc)
 	fi
-	st=$(echo "scale=8; $st-$st0+$delay" |bc)
-	t=$(echo "scale=8; $t-$st0+$delay" |bc)	
+	echo $t $st
+	st=$(echo "scale=8; $st-($st0)+$delay" |bc)
+	t=$(echo "scale=8; $t-($st0)+$delay" |bc)	
 	printf '%f\t%f\t%f\t%f\t%d\n' $st $t $fd $dc $f >> $petroot".info"
 done
 
