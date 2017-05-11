@@ -23,8 +23,8 @@
 # The output of this program would be a 4dfp quadruplet and a .info file that  #
 # contains the frame timing and decay correction info.                         #
 ################################################################################
-# Yi Su, 07/19/2016
-VERSION=1.0
+# Yi Su, 05/11/2017
+VERSION=1.1
 
 if [ "$1" == "--version" ]; then
     echo $VERSION
@@ -37,7 +37,7 @@ die(){
 }
 
 program=`basename $0`
-idstr='$Id: '$program',v '$VERSION' Fri Jan 31 09:39:08 CST 2014 suy $'
+idstr='$Id: '$program',v '$VERSION' Thu May 11 12:54:32 CDT 2017 suy $'
 echo $idstr
 
 if [ $# -lt 1 ]
@@ -68,9 +68,30 @@ elif (( $format == 5 ))
 then
 	nih_4dfp $petdir/$petfn $petid $half_life || die "$program ERROR: nih_4dfp $petdir/$petfn $petid $halflife failed"
 fi
-
 # Generate .info file
 PETinfo $petid $format $delay || die "$program ERROR: PETinfo $petid $format $delay failed"
+
+# rescale PET image if needed
+nf=`wc -l ${petid}.info | gawk '{print $1}'`
+
+if [ "$nf" -eq 1 ]
+then
+	# Create sumall 4dfp ( as a copy of the original single frame data )
+	ext=( img img.rec ifh hdr )
+	for (( i=0; i<4; i++ ))
+	do
+		cp ${petid}.4dfp.${ext[$i]} ${petid}_sumall.4dfp.${ext[$i]}
+	done
+else
+	sum_pet_4dfp ${petid} 1 $nf -h${half_life} ${petid}_sumall || die "$program ERROR: sum_pet_4dfp ${petid} 1 $nf -d -h${half_life} ${petid}_sumall failed"
+fi
+mint=`qnt_4dfp ${petid}_sumall ${petid}_sumall | gawk '/Mean/ {print $2}'`
+if (( $(echo "$mint < 1" |bc -l) ))
+then
+	sclfctr=$(echo "scale=6; 1000/$mint" | bc)
+	scale_4dfp ${petid} $sclfctr
+fi
+rm ${petid}_sumall.4dfp.*
 
 # Filtering if requested
 if [ -n "$filterxy" ] && [ -n "$filterz" ]
