@@ -31,7 +31,7 @@ matlabcode
 ----
 Matlab code that are used by some of the scripts (not required for standard PUP processing).
 
-=============
+
 INSTALLATION
 =============
 
@@ -43,4 +43,5 @@ INSTALLATION
 
 ==================================================================================
 This README is prepared by Yi Su, PhD (ysu001@gmail.com) on 2018/10/16 
+
 
