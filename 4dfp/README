@@ -1,0 +1,25 @@
+=======
+4dfp
+=======
+
+The 4dfp package is developed and maintained by Dr. Abraham Z. Snyder (azsnyder@wustl.edu) at Washington University School of Medicine in St. Louis. This package is provided here for the convinience of PUP user. Please refer to Dr. Snyder (Avi) for any questions.
+
+=============
+Installation
+=============
+
+Use the included installation script make_nil-tools.csh to build the package. Prior to installation the following enviromental variables should be set:
+
+NILSRC: the location of the 4dfp package
+RELEASE: the target location of executables, scripts, and supporting files
+
+In addition, the variable OSTYPE needs to be set to "linux" to avoid compiling problems. "linux-gnu" is not recognized by some of the makefiles included in this package.
+
+After setting the enviromental variables, run the following command for installation:
+
+./make_nil-tools.csh
+
+The utility to handle ecat format data is included in the ecat folder and should be installed separately following the provided instructions in that folder.
+
+==================================================================================
+This README is prepared by Yi Su, PhD (ysu001@gmail.com) on 2018/10/16

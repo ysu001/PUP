@@ -1,0 +1,18 @@
+31 May 2012  (karchie@wustl.edu)
+
+What are all these extra files (including, for example, NEWS)?  Most
+are support for the GNU autotools, which is a (reasonably) portable
+package for automatically generating Makefiles and handling various
+system dependencies.
+
+See INSTALL for how to use them.
+
+If you got these files directly from Git, you'll need to do a little
+bit of setup before you can run "configure".  Do the following:
+
+aclocal
+autoheader
+automake -a
+autoconf
+
+and then you can follow the instructions in INSTALL.

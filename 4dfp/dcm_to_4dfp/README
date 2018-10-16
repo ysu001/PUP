@@ -1,0 +1,69 @@
+(See end of file for copyright and license information.)
+
+This dicom to 4dfp conversion program is modified from the fine work
+of the Electronic Radiology Lab, Washington University School of
+Medicine, and Stephen M. Moore. Please respect their copyright
+notices. At this time it should be used with caution. Further testing
+is needed. The basic program was a dicom to 16 bit analyze image
+conversion. Functions for producing 4dfp volume data have been
+added. A rec file and an ifh file are written.
+
+The file sorting algorithm creates a list of filenames and sorts them
+into analyze volumes according to each file's Series Instance UID
+(0020 000e), though an alternate volume-identifying tag may be chosen
+with the -d option. The files within each volume are then sorted by
+the relative image number (tag 0020 0013). Orientation is extracted
+and a check for multivolume data is made. The volume is sorted once
+more by image position (0020 0032) to verify compliance with the
+4dfp-Analyze coordinate system. If every image has the same position
+(bold), volume size is set to 1.
+
+Distance between slices (dime.pixdim[3]) is determined
+preferentially. The default is to use the slice spacing tag 0018
+0088. The slice thickness 0018 0050 will then be used. User defined
+values for slice spacing may be set using the -t switch. (e.g. -t 2.5
+would override the slice thickness and spaceing between slices tags,
+and place the value 2.5 in the hdr file and the "scaling factor
+(mm/pixel) [3]." in the ifh header.) The -c option may be used to
+calculate this value using relative image position tag 0020 0032 and
+will override any -t options or defaults. If tags for slice thickness
+and slice spacing do not exist, and -t option is not used, the program
+default will use the relative image position to calculate the distance
+between slices.
+
+Pixel values may be signed or unsigned 16 bit integers.  Min and max
+are found checking each pixel.
+
+Command Line Options:
+
+-b  Output base filename follows the -b. The default is - analyze - 
+-d  Divide series by the header tag given by the group and element number.
+    ** Default is Series Instance UID 0020 000e
+-f  Directories will be created, and dicom files will be moved.
+-g  Add XYZ slice position, image name and number to rec file.
+
+-c		Slice Spacing: Compute space between slices. (ignore -t)
+-q		Slice Spacing: Do not compute space between slices (** Default)
+-t <flt>	Slice Spacing: Use input value [-t <flt>]
+-t T		Slice Spacing: Use Slice Thickness 0018 0050.[-t T]
+-t S		Slice Spacing: Use Slice Spacing 0018 0088 [-t S](** Default)
+
+-u  Output files named using sequence tag 0018 0024 plus number.
+
+Analyze Coordinate System is determined using Image Position (0020 0032).
+Multivolume and BOLD images are ordered by REL Image Number (0020 0013).
+
+Reverse The Analyze Coordinate System Using Relative Image Position:
+(Multivolume and BOLD data will reverse image numbering (0020 0013).)
+-X  X Sagittal image positions will be ordered high to low.
+-Y  Y Coronal image positions will be low to high.
+-Z  Z Transverse image positions will be high to low.
+
+
+COPYRIGHT INFO (August 2006)
+
+The GNU Public License (see the file COPYING) applies only to GNU
+software derivatives included in this package, notably "configure" and
+arguably "config.h".  It does not apply to other files in this
+directory; if there's a copyright notice at the top of the file,
+believe what it says.
