@@ -43,6 +43,11 @@ ALL: ${PROG}.c ${OBJS}
 	${CC} -o roieval3 roieval3.c ${OBJS} ${LIBS}
 	${CC} -o fs2brain fs2brain.c ${OBJS} ${LIBS}
 	${CC} -o loganREFROI loganREFROI.c ${OBJS} ${LIBS}
+
+release: ${PROG}
+	chmod 775 ${PROG}
+	/bin/mv ${PROG} ${RELEASE}
+
 clean:
 	rm ${OBJS} ${PROG}
 

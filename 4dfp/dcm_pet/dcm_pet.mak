@@ -1,7 +1,9 @@
-# $Header: /data/petsun4/data1/src_solaris/dcm_pet/RCS/dcm_pet.mak,v 1.3 2011/06/07 21:57:08 jon Exp $
-
+# $Header: dcm_pet.mak,v 1.4 2018/10/16 10:13:00 ysu001 Exp $
 #	Makefile for dcm_pet
 # $Log: dcm_pet.mak,v $
+# Revision 1.4 2018/10/16 10:13:00 ysu001
+# Added release target to allow installation to $RELEASE folder
+#
 # Revision 1.3  2011/06/07 21:57:08  jon
 # linux version
 #
@@ -40,6 +42,10 @@ CC = gcc ${CFLAGS}
 
 ${PROG}: ${OBJS} 
 	${CC} -o $@ ${OBJS} ${LOBJS} ${LIBS}
+
+release: ${PROG}
+	chmod 771 ${PROG}
+	/bin/mv ${PROG} ${RELEASE}
 
 .c.o:
 	$(CC) -c $<

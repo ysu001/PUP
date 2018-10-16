@@ -26,7 +26,6 @@ ${PROG}: ${OBJS}
 
 release: ${PROG}
 	chmod 775 ${PROG}
-	chgrp program ${PROG}
 	/bin/mv ${PROG} ${RELEASE}
 
 clean:

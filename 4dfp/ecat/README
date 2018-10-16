@@ -19,4 +19,7 @@ building the ecat tools needed for PUP.
 
 Build the ecatto4dfp and ecat_header excecutable using the included makefile.
 
+For some platforms, where "/bin/sh" is pointed to "/bin/dash" or some other SHELL do not support "pushd" and "popd", you will need to edit the create_src.sh script in the unpacked libecat7 directory and change "#!/bin/sh" at the top to "#!/bin/bash" or some other SHELL that support "pushd" and "popd". 
 
+==================================================================================
+This README is prepared by Yi Su, PhD (ysu001@gmail.com) on 2018/10/16
