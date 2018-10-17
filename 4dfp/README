@@ -2,20 +2,20 @@
 4dfp
 =======
 
-The 4dfp package is developed and maintained by Dr. Abraham Z. Snyder (azsnyder@wustl.edu) at Washington University School of Medicine in St. Louis. This package is provided here for the convinience of PUP user. Please refer to Dr. Snyder (Avi) for any questions.
+The 4dfp package is developed and maintained by Dr. Abraham Z. Snyder (azsnyder@wustl.edu) at Washington University School of Medicine in St. Louis. This package is provided here for the convenience of PUP user. Please refer to Dr. Snyder (Avi) for any questions.
 
 =============
 Installation
 =============
 
-Use the included installation script make_nil-tools.csh to build the package. Prior to installation the following enviromental variables should be set:
+Use the included installation script make_nil-tools.csh to build the package. Prior to installation the following environmental variables should be set:
 
 NILSRC: the location of the 4dfp package
 RELEASE: the target location of executables, scripts, and supporting files
 
 In addition, the variable OSTYPE needs to be set to "linux" to avoid compiling problems. "linux-gnu" is not recognized by some of the makefiles included in this package.
 
-After setting the enviromental variables, run the following command for installation:
+After setting the environmental variables, run the following command for installation:
 
 ./make_nil-tools.csh
 
