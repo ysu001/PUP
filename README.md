@@ -41,7 +41,7 @@ INSTALLATION
 
 3. Copy the content of the scripts folder to desired location or add its location to your path.
 
-======================================================================
+______________________
 This README is prepared by Yi Su, PhD (ysu001@gmail.com) on 2018/10/16 
 
 
