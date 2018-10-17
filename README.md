@@ -5,7 +5,7 @@ PET Unified Pipeline
 
 PUP is a package for processing PET images. It is developed by Yi Su, PhD (ysu001@gmail.com)
 
-The package include the following subfolders of different components:
+The package includes the following subfolders of different components:
 
 4dfp
 ----
@@ -21,7 +21,7 @@ PUP scripts
 
 AVtemplate
 ---- 
-Florbetapir templates for PET templates based processing (not required for standard PUP processing).
+Florbetapir templates for PET templates-based processing (not required for standard PUP processing).
 
 IDAIF
 ----
@@ -35,7 +35,7 @@ Matlab code that are used by some of the scripts (not required for standard PUP 
 INSTALLATION
 =============
 
-1. Following the included instructions for the 4dfp package for its installation. This should be done first, and the package is required by PUP. If the user already has 4dfp installed compare the included tools and make sure the exisiting installation is not missing any components.
+1. Following the included instructions for the 4dfp package for its installation. This should be done first, and the package is required by PUP. If the user already has 4dfp installed compare the included tools and make sure the existing installation is not missing any components.
 
 2. Compile source code in the src folder using the included makefile using the release target. It will put the binaries at the same location as the 4dfp $RELEASE folder.
 
