@@ -402,18 +402,21 @@ if ($status) exit $status
 popd
 
 #############
-# dcm_to_4dfp
+# Obsolete
+# dcm_to_4dfp 
 #############
-wget --help > /dev/null	# test for existence of wget executable
-if (! $status) then	# if wget exists download latest version of source code
-	wget ftp://ftp.nrg.wustl.edu/pub/dcm_to_4dfp/dcm_to_4dfp.tar.gz
-	if ($status) exit $status
-	/bin/rm dcm_to_4dfp.tar
-	gzip -d dcm_to_4dfp.tar.gz
-	if ($status) exit $status
-	/bin/rm -rf dcm_to_4dfp
-	tar xvf dcm_to_4dfp.tar
-endif
+#wget --help > /dev/null	# test for existence of wget executable
+#if (! $status) then	# if wget exists download latest version of source code
+#	wget ftp://ftp.nrg.wustl.edu/pub/dcm_to_4dfp/dcm_to_4dfp.tar.gz
+#	if ($status) exit $status
+#	/bin/rm dcm_to_4dfp.tar
+#	gzip -d dcm_to_4dfp.tar.gz
+#	if ($status) exit $status
+#	/bin/rm -rf dcm_to_4dfp
+#	tar xvf dcm_to_4dfp.tar
+#endif
+##############
+
 pushd dcm_to_4dfp
 if ($status) exit $status
 ./configure --with-TRX=$NILSRC/TRX --exec-prefix=$RELEASE
